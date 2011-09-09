@@ -50,7 +50,9 @@ class BundleHelper {
 		chdir($path);
 		// delete all files in path
 		array_map('unlink', glob("*.chunk"));
-		unlink('bundle');
+		if (file_exists('bundle')) {
+			unlink('bundle');
+		}
 		return rmdir($path);
 	}
 

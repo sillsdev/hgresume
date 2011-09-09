@@ -11,8 +11,8 @@ class HgRunner {
 	function unbundle($filepath) {
 		if (is_file($filepath)) {
 			chdir($this->repoPath);
-			$cmd = "hg unbundle $filepath";
-			system($cmd, $returnval);
+			$cmd = "hg unbundle -u $filepath";
+			exec(escapeshellcmd($cmd), $output, $returnval);
 			if ($returnval != 0) {
 				throw new Exception("command '$cmd' failed!");
 			}
@@ -24,9 +24,9 @@ class HgRunner {
 	function makeBundle($baseHash, $filename) {
 		chdir($this->repoPath);
 		$cmd = "hg bundle --base $baseHash $filename";
-		system($cmd, $returnval);
+		exec(escapeshellcmd($cmd), $output, $returnval);
 		if ($returnval != 0) {
-			throw new Exception("command '$cmd' failed!");
+			throw new Exception("command '$cmd' failed!\n");
 		}
 	}
 }

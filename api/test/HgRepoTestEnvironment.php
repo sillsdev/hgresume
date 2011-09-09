@@ -38,10 +38,6 @@ class HgRepoTestEnvironment {
 			throw new Exception("Cannot open zipfile '$zipfile' to extract");
 		}
 	}
-
-	function getBundlePath() {
-		return "data/sample.bundle";
-	}
 }
 
 ?>
