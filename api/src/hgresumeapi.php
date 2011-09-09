@@ -8,12 +8,12 @@ const REPOPATH = "/var/vcs/public";
 
 class HgResumeAPI {
 
-	function pushBundleChunk($repoId, $username, $password, $baseHash, $bundleSize, $chunkChecksum, $chunkOffset, $chunkData) {
+	function pushBundleChunk($repoId, $baseHash, $bundleSize, $chunkChecksum, $chunkOffset, $chunkData) {
 
 		// how is user authentication handled?  Maybe we don't need this because we'll be using Apache HTTP auth?
-		if (!$this->isValidUser($repoId, $username, $password)) {
-			return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
-		}
+		//if (!$this->isValidUser($repoId, $username, $password)) {
+		//	return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
+		//}
 		if ($chunkChecksum != md5($chunkData)) {
 			// invalid checksum: resend chunk data
 			return HgResumeResponse(HgResumeResponse::RESEND);
@@ -47,12 +47,12 @@ class HgResumeAPI {
 		}
 	}
 
-	function isValidUser($id, $user, $pass) {
+	//function isValidUser($id, $user, $pass) {
 		// how do we implement this?  Maybe we don't need to if apache takes care of the auth?
-		return true;
-	}
+	//	return true;
+	//}
 
-	function pullBundleChunk($repoId, $username, $password, $baseHash, $chunkOffset, $chunkSize) {
+	function pullBundleChunk($repoId, $baseHash, $chunkOffset, $chunkSize) {
 		// this function returns the following values via HTTP
 		// chunkSize
 		// chunkChecksum
@@ -79,17 +79,17 @@ class HgResumeAPI {
 		$checksum = md5($chunkData);
 	}
 
-	function getTip($repoId, $username, $password) {
+	function getTip($repoId) {
 		// are username and password required here?
 
 		// query hg for the basehash; this is used for doing pullBundleChunk operation
 	}
 
-	function finishPushBundle($repoId, $username, $password, $baseHash) {
+	function finishPushBundle($repoId, $baseHash) {
 		// how is user authentication handled?  Maybe we don't need this because we'll be using Apache HTTP auth?
-		if (!$this->isValidUser($repoId, $username, $password)) {
-			return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
-		}
+		//if (!$this->isValidUser($repoId, $username, $password)) {
+		//	return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
+		//}
 
 		$bundle = new HgBundleHandler($repoId, $baseHash);
 		if ($bundle->cleanUpPush()) {
@@ -99,11 +99,11 @@ class HgResumeAPI {
 		}
 	}
 
-	function finishPullBundle($repoId, $username, $password, $baseHash) {
+	function finishPullBundle($repoId, $baseHash) {
 		// how is user authentication handled?  Maybe we don't need this because we'll be using Apache HTTP auth?
-		if (!$this->isValidUser($repoId, $username, $password)) {
-			return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
-		}
+		//if (!$this->isValidUser($repoId, $username, $password)) {
+		//	return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
+		//}
 
 		$bundle = new HgBundleHandler($repoId, $baseHash);
 		if ($bundle->cleanUpPull()) {
