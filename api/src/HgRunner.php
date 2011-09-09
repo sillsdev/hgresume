@@ -5,7 +5,11 @@ class HgRunner {
 	const DEFAULT_HG = "/var/vcs/public";
 
 	function __construct($repoPath = DEFAULT_HG) {
-		$this->repoPath = $repoPath;
+		if (is_dir($repoPath)) {
+			$this->repoPath = $repoPath;
+		} else {
+			throw new Exception("repo '$repoPath' doesn't exist!");
+		}
 	}
 
 	function unbundle($filepath) {
@@ -17,7 +21,7 @@ class HgRunner {
 				throw new Exception("command '$cmd' failed!");
 			}
 		} else {
-			throw new Exception("bundle $filepath does not exist or is not a file!");
+			throw new Exception("bundle file '$filepath' is not a file!");
 		}
 	}
 
@@ -28,6 +32,9 @@ class HgRunner {
 		if ($returnval != 0) {
 			throw new Exception("command '$cmd' failed!\n");
 		}
+		//if (!is_file($filename)) {
+		//	throw new Exception("Failed to make bundle '$filename'");
+		//}
 	}
 }
 
