@@ -18,8 +18,8 @@ class TestOfHgRunner extends UnitTestCase {
 
 	function testUnbundle_BundleFileExists_BundleIsApplied() {
 		$bundleFile = TestPath . "/data/sample.bundle";
-		$repoPath = $this->testEnvironment->getPath();
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$repoPath = $this->testEnvironment->Path;
 
 		// this file will be present after the bundle is applied
 		$successFile = "$repoPath/bundlesuccess.txt";
@@ -36,10 +36,10 @@ class TestOfHgRunner extends UnitTestCase {
 
 	function testMakeBundle_HgRepoExistsWithSuccessFile_BundleFileEqualsSampleBundleFile() {
 		$referenceBundleFile = TestPath . "/data/sample.bundle";
-		$repoPath = $this->testEnvironment->getPath();
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$repoPath = $this->testEnvironment->Path;
 		$bundleFile = "$repoPath/bundle";
 		$successFile = "$repoPath/bundlesuccess.txt";
-		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
 
 		// precondition
 		$this->assertTrue(file_exists($successFile));
@@ -59,7 +59,7 @@ class TestOfHgRunner extends UnitTestCase {
 
 	function testMakeBundle_BadBaseHash_Throws() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
-		$repoPath = $this->testEnvironment->getPath();
+		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$this->expectException();
 		$hg->makeBundle('whateverhash', "$repoPath/bundle");
@@ -67,7 +67,7 @@ class TestOfHgRunner extends UnitTestCase {
 
 	function testMakeBundle_noBundleFile_throws() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
-		$repoPath = $this->testEnvironment->getPath();
+		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
 		$this->expectException();
@@ -75,14 +75,18 @@ class TestOfHgRunner extends UnitTestCase {
 	}
 
 	function testUnBundle_noBundleFile_throws() {
-		$repoPath = $this->testEnvironment->getPath();
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$this->expectException();
 		$hg->unbundle('randomfilethatdoesntexist');
 	}
+
+	function testGetTip_IdExists_ReturnsHash() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$this->assertEqual($hg->getTip(), trim(file_get_contents(TestPath . "/data/sample.bundle.hash")));
+	}
 }
-
-
 
 ?>

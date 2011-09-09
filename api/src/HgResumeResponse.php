@@ -7,15 +7,16 @@ class HgResumeResponse {
 	const RESET = 3;
 	const UNAUTHORIZED = 4;
 	const FAIL = 5;
+	const UNKNOWNID = 6;
 
-	var $code;
-	var $returnValues;
-	var $content;
+	var $Code;
+	var $Values;
+	var $Content;
 
 	function __construct($code, $values = array(), $content = "") {
-		$this->code = $code;
-		$this->returnValues = $values;
-		$this->content = $content;
+		$this->Code = $code;
+		$this->Values = $values;
+		$this->Content = $content;
 	}
 }
 

@@ -14,25 +14,25 @@ function recursiveDelete($str){
 }
 
 class HgRepoTestEnvironment {
-	var $_path;
+	var $Path;
+	var $BasePath;
+	var $RepoId;
 
 	function __construct() {
-		$this->_path = sys_get_temp_dir() . "/testHgRepo";
-		recursiveDelete($this->_path);
-	}
-
-	function getPath() {
-		return $this->_path;
+		$this->BasePath = sys_get_temp_dir() . "/hgresume_repoTestEnvironment";
+		recursiveDelete($this->BasePath);
 	}
 
 	function dispose() {
-		recursiveDelete($this->_path);
+		recursiveDelete($this->BasePath);
 	}
 
-	function makeRepo($zipfile = "data/sampleHgRepo.zip") {
+	function makeRepo($zipfile) {
 		$zip = new ZipArchive();
 		if ($zip->open($zipfile) === true) {
-			$zip->extractTo($this->_path);
+			$this->RepoId = pathinfo($zipfile, PATHINFO_FILENAME);
+			$this->Path = $this->BasePath . "/" . $this->RepoId;
+			$zip->extractTo($this->Path);
 			$zip->close();
 		} else {
 			throw new Exception("Cannot open zipfile '$zipfile' to extract");

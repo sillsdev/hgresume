@@ -32,9 +32,16 @@ class HgRunner {
 		if ($returnval != 0) {
 			throw new Exception("command '$cmd' failed!\n");
 		}
-		//if (!is_file($filename)) {
-		//	throw new Exception("Failed to make bundle '$filename'");
-		//}
+	}
+
+	function getTip() {
+		chdir($this->repoPath);
+		$cmd = 'hg tip --template \'{node}\'';
+		exec($cmd, $output, $returnval);
+		if ($returnval != 0) {
+			throw new Exception("command '$cmd' failed!\n");
+		}
+		return $output[0];
 	}
 }
 

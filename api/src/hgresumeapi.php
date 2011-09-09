@@ -4,9 +4,12 @@ require_once("HgResumeResponse.php");
 require_once("HgRunner.php");
 require_once("BundleHelper.php");
 
-const REPOPATH = "/var/vcs/public";
-
 class HgResumeAPI {
+	var $RepoBasePath;
+
+	function __construct($repoPath = "/var/vcs/public") {
+		$this->RepoBasePath = $repoPath;
+	}
 
 	function pushBundleChunk($repoId, $baseHash, $bundleSize, $chunkChecksum, $chunkOffset, $chunkData) {
 
@@ -14,6 +17,10 @@ class HgResumeAPI {
 		//if (!$this->isValidUser($repoId, $username, $password)) {
 		//	return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
 		//}
+
+		if (!is_dir($this->RepoBasePath . "/$repoId")) {
+			return HgResumeResponse(HgResumeResponse::UNKNOWNID);
+		}
 		if ($chunkChecksum != md5($chunkData)) {
 			// invalid checksum: resend chunk data
 			return HgResumeResponse(HgResumeResponse::RESEND);
@@ -36,7 +43,7 @@ class HgResumeAPI {
 		// create the bundle and update the hg repo with the bundle
 		if ($bundleSize == $chunkOffset + filesize($chunkFilename)) {
 			$pathToBundle = $bundle->assemble();
-			$hg = new HgRunner(REPOPATH . "/$repoId");
+			$hg = new HgRunner($this->RepoBasePath . "/$repoId");
 			if ($hg->unbundle($pathToBundle)) {
 				return HgResumeResponse(HgResumeResponse::SUCCESS);
 			} else {
@@ -64,7 +71,7 @@ class HgResumeAPI {
 		$filename = $bundle->getPullFilePath();
 		// make the bundle if it doesn't already exist
 		if (!is_file($filename)) {
-			$hg = new HgRunner(REPOPATH . "/$repoId");
+			$hg = new HgRunner($this->RepoBasePath . "/$repoId");
 			$hg->makeBundle($baseHash, $filename);
 		}
 
@@ -80,9 +87,15 @@ class HgResumeAPI {
 	}
 
 	function getTip($repoId) {
-		// are username and password required here?
-
-		// query hg for the basehash; this is used for doing pullBundleChunk operation
+		try {
+			$hg = new HgRunner("{$this->RepoBasePath}/$repoId");
+			$response = array('Tip' => $hg->getTip());
+			$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, $response);
+		} catch (Exception $e) {
+			$response = array('Error' => substr($e->getMessage(), 0, 1000));
+			$hgresponse = new HgResumeResponse(HgResumeResponse::FAIL, $response);
+		}
+		return $hgresponse;
 	}
 
 	function finishPushBundle($repoId, $baseHash) {
