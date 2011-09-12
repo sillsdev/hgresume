@@ -58,9 +58,12 @@ class BundleHelper {
 
 	function cleanUpPull() {
 		$path = $this->getPullDir();
+		$bundleFile = $this->getPullFilePath();
 		chdir($path);
-		unlink($this->getPullFilePath());
-		return !is_file($this->getPullFilePath());
+		if (file_exists($bundleFile)) {
+			unlink($bundleFile);
+		}
+		return !is_file($bundleFile);
 	}
 
 	function assemble() {

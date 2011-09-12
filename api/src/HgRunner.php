@@ -29,8 +29,13 @@ class HgRunner {
 		chdir($this->repoPath);
 		$cmd = "hg bundle --base $baseHash $filename";
 		exec(escapeshellcmd($cmd), $output, $returnval);
-		if ($returnval != 0) {
-			throw new Exception("command '$cmd' failed!\n");
+		if ($returnval == 1) {
+			// no changesets available for that $bashHash
+			// make a 0 byte bundle file
+			exec(escapeshellcmd("touch $filename"));
+
+		} elseif ($returnval != 0) {
+			throw new Exception("retval is $returnval; command '$cmd' failed!\n");
 		}
 	}
 
@@ -42,6 +47,16 @@ class HgRunner {
 			throw new Exception("command '$cmd' failed!\n");
 		}
 		return $output[0];
+	}
+
+	function isValidBase($hash) {
+		chdir($this->repoPath);
+		$cmd = "hg update -r $hash";
+		exec($cmd, $output, $returnval);
+		if ($returnval != 0) {
+			return false;
+		}
+		return true;
 	}
 }
 

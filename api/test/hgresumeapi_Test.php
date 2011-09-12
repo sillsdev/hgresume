@@ -7,9 +7,11 @@ require_once(SourcePath . "/HgResumeResponse.php");
 class TestOfHgResumeAPI extends UnitTestCase {
 
 	var $testEnvironment;
+	var $api;
 
 	function setUp() {
 		$this->testEnvironment = new HgRepoTestEnvironment();
+		$this->api = new HgResumeAPI($this->testEnvironment->BasePath);
 	}
 
 	function tearDown() {
@@ -19,17 +21,15 @@ class TestOfHgResumeAPI extends UnitTestCase {
 	function testGetTip_IdExists_ReturnsSuccessCodeAndHash() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$repoId = $this->testEnvironment->RepoId;
-		$api = new HgResumeAPI($this->testEnvironment->BasePath);
-		$response = $api->getTip($repoId);
+		$response = $this->api->getTip($repoId);
 		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 
 		$this->assertEqual($response->Values['Tip'], trim(file_get_contents(TestPath . "/data/sample.bundle.hash")));
 	}
 
-	function testGetTip_IdExists_ReturnsHash() {
+	function testGetTip_IdNotExistsExists_ReturnsFailCode() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
-		$api = new HgResumeAPI($this->testEnvironment->BasePath);
-		$response = $api->getTip('invalidid');
+		$response = $this->api->getTip('invalidid');
 		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
@@ -38,31 +38,103 @@ class TestOfHgResumeAPI extends UnitTestCase {
 	// we won't test finishPushBundle since it is just a wrapper for BundleHelper->cleanUpPush, and that is already tested
 
 	function testPushBundleChunk_BogusId_UnknownCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$response = $this->api->pushBundleChunk('fakeid', 'fakehash', 10000, 'chunkChecksum', 0, 'chunkData');
+		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
 
 	function testPushBundleChunk_DataBadChecksum_ResendCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$response = $this->api->pushBundleChunk('sampleHgRepo', 'fakehash', 10000, 'badCheckSum', 0, 'chunkData');
+		$this->assertEqual(HgResumeResponse::RESEND, $response->Code);
 	}
 
 	function testPushBundleChunk_InvalidOffset_FailCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$chunkData = 'chunkData';
+		$checksum = md5($chunkData);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', 'fakehash', 1000, $checksum, 2000, $chunkData);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
 	function testPushBundleChunk_NoData_FailCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$chunkData = '';
+		$checksum = md5($chunkData);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', 'fakehash', 1000, $checksum, 0, $chunkData);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
 	function testPushBundleChunk_InvalidBaseHash_FailCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$chunkData = 'someData';
+		$checksum = md5($chunkData);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', 'fakehash', 1000, $checksum, 0, $chunkData);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
 	function testPushBundleChunk_InvalidBundleSize_FailCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$chunkData = 'someData';
+		$checksum = md5($chunkData);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 'invalid', $checksum, 0, $chunkData);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
+	}
+
+	function testPushBundleChunk_DataTooLarge_FailCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$chunkData = 'someDataLargerThan 10 bytes';
+		$checksum = md5($chunkData);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 10, $checksum, 0, $chunkData);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
 	function testPushBundleChunk_ChunkSent_ReceivedCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$chunkData = 'someChunkData';
+		$checksum = md5($chunkData);
+		$this->api->finishPushBundle('sampleHgRepo', $hash); // clear out api
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 100, $checksum, 0, $chunkData);
+		$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
 	}
 
 	function testPushBundleChunk_AllChunksSent_SuccessCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->finishPushBundle('sampleHgRepo', $hash);
+
+		$bundleData = file_get_contents(TestPath . "/data/sample.bundle");
+		$bundleSize = mb_strlen($bundleData, "8bit");
+		$chunkSize = 50;
+		for ($offset = 0; $offset < $bundleSize; $offset+=$chunkSize) {
+
+			$chunkData = mb_substr($bundleData, $offset, $chunkSize, "8bit");
+			$actualChunkSize = mb_strlen($chunkData, "8bit");
+			$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, $bundleSize, md5($chunkData), $offset, $chunkData);
+			if ($actualChunkSize < $chunkSize) { // this is the end
+				$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+			} else { // we're not finished yet
+				$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
+			}
+		}
 	}
 
 	function testPushBundleChunk_AllChunksSentButBadDataChunkSoBundleFails_ResetCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12345'), 0, '12345');
+		$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('1234'), 5, '1234');
+		$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('1234'), 9, '1234');
+		$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12'), 13, '12');
+		$this->assertEqual(HgResumeResponse::RESET, $response->Code);
 	}
+
 
 
 
@@ -71,24 +143,91 @@ class TestOfHgResumeAPI extends UnitTestCase {
 
 
 	function testPullBundleChunk_BogusId_UnknownCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$response = $this->api->pullBundleChunk('fakeid', 'fakehash', 0, 50);
+		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
 
 	function testPullBundleChunk_InvalidHash_FailCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$response = $this->api->pullBundleChunk('sampleHgRepo', 'fakehash', 0, 50);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
+	}
+
+	function testPullBundleChunk_ValidRequestButNoChanges_NoChangeCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$response = $this->api->pullBundleChunk('sampleHgRepo', $hash, 0, 50);
+		$this->assertEqual(HgResumeResponse::NOCHANGE, $response->Code);
 	}
 
 	function testPullBundleChunk_OffsetZero_ValidData() {
+		$offset = 0;
+		$chunkSize = 50;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->finishPullBundle('sampleHgRepo2', $hash); // reset things on server
+		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize);
+		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
+		$expectedChunkData = mb_substr($wholeBundle, $offset, $chunkSize, "8bit");
+		$this->assertEqual(md5($expectedChunkData), $response->Values['checksum']);
+		$this->assertEqual(md5($response->Content), $response->Values['checksum']);
+		$this->assertEqual($offset, $response->Values['offset']);
+		$this->assertEqual($chunkSize, $response->Values['chunkSize']);
+		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);
 	}
 
 	function testPullBundleChunk_MiddleOffset_ValidData() {
+		$offset = 100;
+		$chunkSize = 100;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->finishPullBundle('sampleHgRepo2', $hash); // reset things on server
+		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize);
+		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
+		$expectedChunkData = mb_substr($wholeBundle, $offset, $chunkSize, "8bit");
+		$this->assertEqual(md5($expectedChunkData), $response->Values['checksum']);
+		$this->assertEqual(md5($response->Content), $response->Values['checksum']);
+		$this->assertEqual($offset, $response->Values['offset']);
+		$this->assertEqual($chunkSize, $response->Values['chunkSize']);
+		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);
 	}
 
 	function testPullBundleChunk_OffsetGreaterThanSize_FailCode() {
+		$offset = 10000; // the sample data is only 455 bytes
+		$chunkSize = 100;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
-	function testPullBundleChunk_OffsetGreaterThanSize_FailCode() {
+	function testPullBundleChunk_PullUntilFinished_AssembledBundleIsValid() {
+		$offset = 0;
+		$chunkSize = 50;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->finishPullBundle('sampleHgRepo2', $hash); // reset things on server
+
+		$assembledBundle = '';
+		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
+		while (mb_strlen($assembledBundle) < $bundleSize) {
+			$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize);
+			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+			$bundleSize = $response->Values['bundleSize'];
+			$chunkSize = $response->Values['chunkSize'];
+			$checksum = $response->Values['checksum'];
+			$chunkData = $response->Content;
+
+			$this->assertEqual($checksum, md5($chunkData));
+			$assembledBundle .= $chunkData;
+			$offset += $chunkSize;
+		}
+		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
+		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
-
-
 }
 
 ?>
