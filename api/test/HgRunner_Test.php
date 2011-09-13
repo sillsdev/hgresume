@@ -92,7 +92,12 @@ class TestOfHgRunner extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$hg = new HgRunner($this->testEnvironment->Path);
 		$this->assertFalse($hg->IsValidBase('whateverhash'));
+	}
 
+	function testIsValidBase_EmptyHash_False() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$this->assertFalse($hg->IsValidBase(''));
 	}
 
 	function testIsValidBase_HashExist_True() {

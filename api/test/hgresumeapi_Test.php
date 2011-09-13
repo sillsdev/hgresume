@@ -53,7 +53,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$chunkData = 'chunkData';
 		$checksum = md5($chunkData);
-		$response = $this->api->pushBundleChunk('sampleHgRepo', 'fakehash', 1000, $checksum, 2000, $chunkData);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', '', 1000, $checksum, 2000, $chunkData);
 		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
@@ -61,7 +61,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$chunkData = '';
 		$checksum = md5($chunkData);
-		$response = $this->api->pushBundleChunk('sampleHgRepo', 'fakehash', 1000, $checksum, 0, $chunkData);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', '', 1000, $checksum, 0, $chunkData);
 		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
@@ -144,7 +144,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 
 	function testPullBundleChunk_BogusId_UnknownCode() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
-		$response = $this->api->pullBundleChunk('fakeid', 'fakehash', 0, 50);
+		$response = $this->api->pullBundleChunk('fakeid', '', 0, 50);
 		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
 

@@ -13,11 +13,6 @@ class HgResumeAPI {
 
 	function pushBundleChunk($repoId, $baseHash, $bundleSize, $chunkChecksum, $chunkOffset, $chunkData) {
 
-		// how is user authentication handled?  Maybe we don't need this because we'll be using Apache HTTP auth?
-		//if (!$this->isValidUser($repoId, $username, $password)) {
-		//	return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
-		//}
-
 		/********* Parameter validation and checking ************/
 		// $repoId
 		if (!is_dir($this->RepoBasePath . "/$repoId")) {
@@ -27,26 +22,26 @@ class HgResumeAPI {
 		// $chunkChecksum
 		if ($chunkChecksum != md5($chunkData)) {
 			// invalid checksum: resend chunk data
-			return new HgResumeResponse(HgResumeResponse::RESEND);
+			return new HgResumeResponse(HgResumeResponse::RESEND, array('Error' => 'checksum failed'));
 		}
 		// $chunkOffset
 		if ($chunkOffset < 0 or $chunkOffset >= $bundleSize) {
 			//invalid offset
-			return new HgResumeResponse(HgResumeResponse::FAIL);
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid offset'));
 		}
 		// $chunkData
 		$dataSize = mb_strlen($chunkData, "8bit");
 		if ($dataSize == 0 or ($dataSize > $bundleSize - $chunkOffset)) {
 			// no data or data larger than advertised bundle size
-			return new HgResumeResponse(HgResumeResponse::FAIL);
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data or data larger than remaining bundle size'));
 		}
 		// $bundleSize
 		if (intval($bundleSize) < 0) {
-			return new HgResumeResponse(HgResumeResponse::FAIL);
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'negative bundle size'));
 		}
 		// $baseHash
 		if (!$hg->isValidBase($baseHash)) {
-			return new HgResumeResponse(HgResumeResponse::FAIL);
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid baseHash'));
 		}
 
 		$bundle = new BundleHelper($repoId, $baseHash);
@@ -67,7 +62,8 @@ class HgResumeAPI {
 				$this->finishPushBundle($repoId, $baseHash); // clean up bundle assembly cache
 			} catch (Exception $e) {
 				// is there really a difference between RESET and FAIL?
-				$response = new HgResumeResponse(HgResumeResponse::RESET);
+				$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
+				$response = new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
 				$this->finishPushBundle($repoId, $baseHash); // clean up bundle assembly cache
 			}
 			return $response;
@@ -77,17 +73,8 @@ class HgResumeAPI {
 		}
 	}
 
-	//function isValidUser($id, $user, $pass) {
-		// how do we implement this?  Maybe we don't need to if apache takes care of the auth?
-	//	return true;
-	//}
 
 	function pullBundleChunk($repoId, $baseHash, $chunkOffset, $chunkSize) {
-		// this function returns the following values via HTTP
-		// chunkSize
-		// chunkChecksum
-		// chunkData
-		// bundleSize
 
 		/********* Parameter validation and checking ************/
 		// $repoId
@@ -98,32 +85,35 @@ class HgResumeAPI {
 		// $chunkOffset
 		if ($chunkOffset < 0) {
 			//invalid offset
-			return new HgResumeResponse(HgResumeResponse::FAIL);
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid chunkOffset'));
 		}
 		// $baseHash
 		if (!$hg->isValidBase($baseHash)) {
-			return new HgResumeResponse(HgResumeResponse::FAIL);
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid baseHash'));
 		}
 
-
-		$bundle = new BundleHelper($repoId, $baseHash);
-		$pullDir = $bundle->getPullDir();
-		$filename = $bundle->getPullFilePath();
-		// make the bundle if it doesn't already exist
-		if (!is_file($filename)) {
-			$hg = new HgRunner($this->RepoBasePath . "/$repoId");
-			$hg->makeBundle($baseHash, $filename);
+		try {
+			$bundle = new BundleHelper($repoId, $baseHash);
+			$pullDir = $bundle->getPullDir();
+			$filename = $bundle->getPullFilePath();
+			// make the bundle if it doesn't already exist
+			if (!is_file($filename)) {
+				$hg = new HgRunner($this->RepoBasePath . "/$repoId");
+				$hg->makeBundle($baseHash, $filename);
+			}
+		} catch (Exception $e) {
+			$response = array('Error' => substr($e->getMessage(), 0, 1000));
+			return new HgResumeResponse(HgResumeResponse::FAIL, $response);
 		}
 
 		$bundleSize = filesize($filename);
-
 		if ($bundleSize == 0) {
 			return new HgResumeResponse(HgResumeResponse::NOCHANGE);
 		}
 
 		// FAIL if offset is greater or equal to than bundlesize
 		if ($chunkOffset >= $bundleSize) {
-			return new HgResumeResponse(HgResumeResponse::FAIL);
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'offset greater than bundle size'));
 		}
 
 		// read the specified chunk of the bundle file
@@ -158,11 +148,6 @@ class HgResumeAPI {
 	}
 
 	function finishPushBundle($repoId, $baseHash) {
-		// how is user authentication handled?  Maybe we don't need this because we'll be using Apache HTTP auth?
-		//if (!$this->isValidUser($repoId, $username, $password)) {
-		//	return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
-		//}
-
 		$bundle = new BundleHelper($repoId, $baseHash);
 		if ($bundle->cleanUpPush()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
@@ -172,11 +157,6 @@ class HgResumeAPI {
 	}
 
 	function finishPullBundle($repoId, $baseHash) {
-		// how is user authentication handled?  Maybe we don't need this because we'll be using Apache HTTP auth?
-		//if (!$this->isValidUser($repoId, $username, $password)) {
-		//	return new HgResumeResponse(HgResumeResponse::UNAUTHORIZED);
-		//}
-
 		$bundle = new BundleHelper($repoId, $baseHash);
 		if ($bundle->cleanUpPull()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
@@ -184,12 +164,6 @@ class HgResumeAPI {
 			return new HgResumeResponse(HgResumeResponse::FAIL);
 		}
 	}
-}
-
-
-function Main() {
-	//$api = new HgResumeAPI();
-	//RestRpcServer::handle($api);
 }
 
 ?>

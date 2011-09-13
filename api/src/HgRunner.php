@@ -16,7 +16,7 @@ class HgRunner {
 		if (is_file($filepath)) {
 			chdir($this->repoPath);
 			$cmd = "hg unbundle -u $filepath";
-			exec(escapeshellcmd($cmd), $output, $returnval);
+			exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
 			if ($returnval != 0) {
 				throw new Exception("command '$cmd' failed!");
 			}
@@ -28,9 +28,9 @@ class HgRunner {
 	function makeBundle($baseHash, $filename) {
 		chdir($this->repoPath);
 		$cmd = "hg bundle --base $baseHash $filename";
-		exec(escapeshellcmd($cmd), $output, $returnval);
+		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
 		if ($returnval == 1) {
-			// no changesets available for that $bashHash
+			// no changesets available for that $baseHash
 			// make a 0 byte bundle file
 			exec(escapeshellcmd("touch $filename"));
 
@@ -52,7 +52,7 @@ class HgRunner {
 	function isValidBase($hash) {
 		chdir($this->repoPath);
 		$cmd = "hg update -r $hash";
-		exec($cmd, $output, $returnval);
+		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
 		if ($returnval != 0) {
 			return false;
 		}
