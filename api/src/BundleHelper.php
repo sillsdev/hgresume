@@ -1,26 +1,21 @@
 <?php
 
-class BundleHelper {
-	var $_repoId;
-	var $_hgBaseHash;
-	var $_basePath;
+define('CACHE_PATH', "/var/cache/hgresume");
 
-	function __construct($id, $hash) {
-		if(!$this->_validateAlphaNumeric($id)) {
-			throw new Exception("ValidationException: repoId $id did not validate as alpha numeric!");
+class BundleHelper {
+	private $transId;
+	private $basePath;
+
+	function __construct($id) {
+		if(!BundleHelper::validateAlphaNumeric($id)) {
+			throw new Exception("ValidationException: transId $id did not validate as alpha numeric!");
 		}
-		if(!$this->_validateAlphaNumeric($hash)) {
-			throw new Exception("ValidationException: baseHash $hash did not validate as alpha numeric!");
-		}
-		//$this->_validateRepoId($id); // should we validate the repoId as well?
-		//$this->_validateBaseHash($hash);
-		$this->_repoId = $id;
-		$this->_hgBaseHash = $hash;
-		$this->_basePath = "/var/cache/hgresume";
+		$this->transId = $id;
+		$this->basePath = CACHE_PATH;
 	}
 
 	function getAssemblyDir() {
-		$path = "{$this->_basePath}/{$this->_repoId}/{$this->_hgBaseHash}-forAssembly";
+		$path = "{$this->basePath}/{$this->transId}-assembly";
 		if (!is_dir($path)) {
 			if (!mkdir($path, 0755, true)) {
 				throw new Exception("Failed to create bundle storage dir: $path");
@@ -30,13 +25,13 @@ class BundleHelper {
 	}
 
 	function getPullFilePath() {
-		$filename = "{$this->_hgBaseHash}.bundle";
+		$filename = "{$this->transId}.bundle";
 		$path = $this->getPullDir();
 		return "$path/$filename";
 	}
 
 	function getPullDir() {
-		$path = "{$this->_basePath}/{$this->_repoId}";
+		$path = "{$this->basePath}";
 		if (!is_dir($path)) {
 			if (!mkdir($path, 0755, true)) {
 				throw new Exception("Failed to create repo dir: $path");
@@ -74,17 +69,13 @@ class BundleHelper {
 		return "$bundleDir/bundle";
 	}
 
-	function _validateAlphaNumeric($str) {
+	static function validateAlphaNumeric($str) {
 		// assert that the string contains only alphanumeric digits plus underscore
 		if (preg_match('/^[a-zA-Z0-9_\-]+$/', $str) > 0) {
 			return true;
 		} else {
 			return false;
 		}
-	}
-
-	function _validateBaseHash($str) {
-		// check if this base hash actually exists in the hg repo????
 	}
 }
 
