@@ -69,6 +69,9 @@ class RestServer {
 		// send HTTP status code
 		array_push($headers, "HTTP/1.1 " . $httpCode);
 
+		// send Version
+		array_push($headers, "X-HgR-Version: " . $response->Version);
+
 		// send an X-HgR-Status header
 		array_push($headers, "X-HgR-Status: $hgrStatus");
 
@@ -80,11 +83,13 @@ class RestServer {
 		}
 
 		if (!$this->debug) {
+			// regular mode
 			foreach ($headers as $header) {
 				header($header);
 			}
 			header("Content-type: text/plain\n\n");
 		} else {
+			// debug mode
 			header("Content-type: text/plain\n\n");
 			foreach ($headers as $header) {
 				print($header . "\n");

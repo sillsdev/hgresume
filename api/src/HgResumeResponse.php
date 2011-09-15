@@ -1,5 +1,7 @@
 <?php
 
+define("API_VERSION", 1);
+
 class HgResumeResponse {
 	/* SUCCESS
 	 * Operation completed successfully.
@@ -54,14 +56,16 @@ class HgResumeResponse {
 	// HTTP 304 Not Modified
 	const NOCHANGE = 7;
 
-	var $Code;
-	var $Values;
-	var $Content;
+	public $Code;
+	public $Values;
+	public $Content;
+	public $Version;
 
-	function __construct($code, $values = array(), $content = "") {
+	function __construct($code, $values = array(), $content = "", $version = API_VERSION) {
 		$this->Code = $code;
 		$this->Values = $values;
 		$this->Content = $content;
+		$this->Version = $version;
 	}
 }
 

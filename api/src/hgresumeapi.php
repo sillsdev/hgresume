@@ -7,6 +7,8 @@ require_once("BundleHelper.php");
 class HgResumeAPI {
 	var $RepoBasePath;
 
+	// Note: API_VERSION is defined in HgResumeResponse.php
+
 	function __construct($repoPath = "/var/vcs/public") {
 		$this->RepoBasePath = $repoPath;
 	}

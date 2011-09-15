@@ -8,6 +8,7 @@ class AllTests extends TestSuite {
 		$this->addFile(TestPath . '/BundleHelper_Test.php');
 		$this->addFile(TestPath . '/HgRunner_Test.php');
 		$this->addFile(TestPath . '/HgResumeAPI_Test.php');
+		$this->addFile(TestPath . '/HgResumeResponse_Test.php');
 	}
 }
 
