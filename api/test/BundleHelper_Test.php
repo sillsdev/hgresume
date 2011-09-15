@@ -57,6 +57,20 @@ class TestOfBundleHelper extends UnitTestCase {
 		$this->assertEqual("The quick brown fox jumped...", file_get_contents($bundleFilename));
 		$bundle->cleanUpPush();
 	}
+
+	function testGetOffset_Unset_ReturnsZero() {
+		$transId = "id123";
+		$bundle = new BundleHelper($transId);
+		$this->assertEqual(0, $bundle->getOffset());
+	}
+
+	function testSetGetOffset_SetThenGet_GetReturnsValueThatWasSet() {
+		$transId = "id123";
+		$bundle = new BundleHelper($transId);
+		$sow = 5023;
+		$bundle->setOffset($sow);
+		$this->assertEqual($sow, $bundle->getOffset());
+	}
 }
 
 ?>

@@ -48,6 +48,9 @@ class BundleHelper {
 		if (file_exists('bundle')) {
 			unlink('bundle');
 		}
+		if (file_exists('metadata')) {
+			unlink('metadata');
+		}
 		return rmdir($path);
 	}
 
@@ -76,6 +79,39 @@ class BundleHelper {
 		} else {
 			return false;
 		}
+	}
+
+	// TODO store metadata in an mySQL database to keep information about
+	// transaction activity
+
+	// get the offset of the data we've collected
+	function getOffset() {
+		$metadata = $this->getMetadata();
+		if ($metadata['offset']) {
+			return $metadata['offset'];
+		} else {
+			return 0;
+		}
+	}
+
+	function setOffset($val) {
+		$metadata = $this->getMetadata();
+		$metadata['offset'] = intval($val);
+		$this->setMetadata($metadata);
+	}
+
+	private function getMetadata() {
+		$filename = $this->getAssemblyDir() . "/metadata";
+		if (file_exists($filename)) {
+			return unserialize(file_get_contents($filename));
+		} else {
+			return array();
+		}
+	}
+
+	private function setMetadata($arr) {
+		$filename = $this->getAssemblyDir() . "/metadata";
+		file_put_contents($filename, serialize($arr));
 	}
 }
 

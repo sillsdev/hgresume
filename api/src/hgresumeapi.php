@@ -47,24 +47,38 @@ class HgResumeAPI {
 		}
 
 		$bundle = new BundleHelper($transId);
+
+		// if the data sent falls before the start of window, mark it as received and reply with correct startOfWindow
+		// Fail if there is overlap or a mismatch between the start of window and the data offset
+		$startOfWindow = $bundle->getOffset();
+		if ($offset != $startOfWindow) { // these are usually equal.  It could be a client programming error if they are not
+			if ($dataSize + $offset <= $startOfWindow) {
+				return new HgResumeResponse(HgResumeResponse::RECEIVED, array('offset' => $startOfWindow, 'Note' => 'offset mismatch with startOfWindow'));
+			} else {
+				return new HgResumeResponse(HgResumeResponse::FAIL, array('offset' => $startOfWindow, 'Error' => "offset mismatch with startOfWindow"));
+			}
+		}
+
 		$chunkPath = $bundle->getAssemblyDir();
 		$chunkFilename = sprintf("%s/%010d.chunk", $chunkPath, $offset);
-		//$chunkFilename = "$chunkPath/$offset.chunk";
 
 		if ($offset < $bundleSize) {
 			file_put_contents($chunkFilename, $data);
 		}
 
-		// for the final chunk; asseble the bundle and apply the bundle
-		if ($bundleSize == $offset + filesize($chunkFilename)) {
+		// for the final chunk; assemble the bundle and apply the bundle
+		if ($bundleSize == $offset + $dataSize) {
 			try {
 				$pathToBundle = $bundle->assemble();
 				$hg->unbundle($pathToBundle);
+				$bundle->setOffset($offset + $dataSize);
+
 				$responseValues = array('transId' => $transId);
 				$response = new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
 				$this->finishPushBundle($transId); // clean up bundle assembly cache
 			} catch (Exception $e) {
 				// is there really a difference between RESET and FAIL?
+				$bundle->setOffset(0);
 				$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
 				$responseValues['transId'] = $transId;
 				$response = new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
@@ -73,7 +87,8 @@ class HgResumeAPI {
 			return $response;
 		} else {
 			// received the chunk, but it's not the last one; we expect more chunks
-			$responseValues = array('transId' => $transId);
+			$bundle->setOffset($offset + $dataSize);
+			$responseValues = array('transId' => $transId, 'sow' => $sow);
 			return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
 		}
 	}

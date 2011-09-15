@@ -136,6 +136,29 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(HgResumeResponse::RESET, $response->Code);
 	}
 
+	// SOW = start of window; AKA offset
+	function testPushBundleChunk_OffsetNotEqualToSOW_FailCodeReturnsSOW() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$transId = 'id123';
+		$this->api->finishPushBundle($transId);
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12345'), 0, '12345', $transId);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12345'), 10, '12345', $transId);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
+		$this->assertEqual(5, $response->Values['offset']);
+	}
+
+	function testPushBundleChunk_PushWithOffsetZeroButSOWGreaterThanZero_ReceivedCodeReturnsSOW() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$transId = 'id123';
+		$this->api->finishPushBundle($transId);
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12345'), 0, '12345', $transId);
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12'), 0, '12', $transId);
+		$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
+		$this->assertEqual(5, $response->Values['offset']);
+	}
+
 
 
 
