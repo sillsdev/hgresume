@@ -215,7 +215,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$expectedChunkData = mb_substr($wholeBundle, $offset, $chunkSize, "8bit");
 		$this->assertEqual(md5($expectedChunkData), $response->Values['checksum']);
 		$this->assertEqual(md5($response->Content), $response->Values['checksum']);
-		$this->assertEqual($offset, $response->Values['offset']);
 		$this->assertEqual($chunkSize, $response->Values['chunkSize']);
 		$this->assertEqual($transId, $response->Values['transId']);
 		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);

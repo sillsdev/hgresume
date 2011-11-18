@@ -150,8 +150,7 @@ class HgResumeAPI {
 				'bundleSize' => $bundleSize,
 				'chunkSize' => $actualChunkSize,
 				'checksum' => $checksum,
-				'transId' => $transId,
-				'offset' => $offset);
+				'transId' => $transId);
 		$response->Content = $data;
 		return $response;
 	}
@@ -161,6 +160,18 @@ class HgResumeAPI {
 			$hg = new HgRunner("{$this->RepoBasePath}/$repoId");
 			$response = array('Tip' => $hg->getTip());
 			$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, $response);
+		} catch (Exception $e) {
+			$response = array('Error' => substr($e->getMessage(), 0, 1000));
+			$hgresponse = new HgResumeResponse(HgResumeResponse::FAIL, $response);
+		}
+		return $hgresponse;
+	}
+
+	function getRevisions($repoId, $offset, $quantity) {
+		try {
+			$hg = new HgRunner("{$this->RepoBasePath}/$repoId");
+			$revisionList = $hg->getRevisions($offset, $quantity);
+			$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, array(), implode("|",$revisionList));
 		} catch (Exception $e) {
 			$response = array('Error' => substr($e->getMessage(), 0, 1000));
 			$hgresponse = new HgResumeResponse(HgResumeResponse::FAIL, $response);

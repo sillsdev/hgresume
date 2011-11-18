@@ -105,7 +105,34 @@ class TestOfHgRunner extends UnitTestCase {
 		$hg = new HgRunner($this->testEnvironment->Path);
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
 		$this->assertTrue($hg->IsValidBase($hash));
+	}
 
+	function testGetRevisions_Request2And5Exist_2Revisions() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$revisions = explode("\n", rtrim(file_get_contents(TestPath . "/data/sample.revision.list"), "\n"));
+		$this->assertEqual($hg->getRevisions(0,2), array_slice($revisions, 0, 2));
+	}
+
+	function testGetRevisions_Request50And5Exist_5Revisions() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$revisions = explode("\n", rtrim(file_get_contents(TestPath . "/data/sample.revision.list"), "\n"));
+		$this->assertEqual($hg->getRevisions(0,50), $revisions);
+	}
+
+	function testGetRevisions_Request0_Throws() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$this->expectException();
+		$hg->getRevisions(0,0);
+	}
+
+	function testGetRevisions_Offset2Request2_2Revisions() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$revisions = explode("\n", rtrim(file_get_contents(TestPath . "/data/sample.revision.list"), "\n"));
+		$this->assertEqual($hg->getRevisions(2,2), array_slice($revisions, 2, 2));
 	}
 }
 

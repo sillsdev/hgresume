@@ -49,6 +49,20 @@ class HgRunner {
 		return $output[0];
 	}
 
+	function getRevisions($offset, $quantity) {
+		if ($quantity < 1) {
+			throw new Exception("quantity parameter much be larger than 0");
+		}
+		chdir($this->repoPath);
+		$template = '{node}\n';
+		$cmd = "hg log -b default --template $template";
+		exec(escapeshellcmd($cmd), $output, $returnval);
+		if ($returnval != 0) {
+			throw new Exception("command '$cmd' failed!\n");
+		}
+		return array_slice($output, $offset, $quantity);
+	}
+
 	function isValidBase($hash) {
 		chdir($this->repoPath);
 		$cmd = "hg update -r $hash";
