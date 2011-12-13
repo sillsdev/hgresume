@@ -77,7 +77,6 @@ class HgResumeAPI {
 				$response = new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
 				$this->finishPushBundle($transId); // clean up bundle assembly cache
 			} catch (Exception $e) {
-				// is there really a difference between RESET and FAIL?
 				$bundle->setOffset(0);
 				$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
 				$responseValues['transId'] = $transId;
@@ -101,7 +100,10 @@ class HgResumeAPI {
 		if (!is_dir($this->RepoBasePath . "/$repoId")) {
 			return new HgResumeResponse(HgResumeResponse::UNKNOWNID);
 		}
+
 		$hg = new HgRunner($this->RepoBasePath . "/$repoId");
+		$bundle = new BundleHelper($transId);
+
 		// $offset
 		if ($offset < 0) {
 			//invalid offset
@@ -113,13 +115,18 @@ class HgResumeAPI {
 		}
 
 		try {
-			$bundle = new BundleHelper($transId);
 			$pullDir = $bundle->getPullDir();
 			$filename = $bundle->getPullFilePath();
-			// make the bundle if it doesn't already exist
 			if (!is_file($filename)) {
-				$hg = new HgRunner($this->RepoBasePath . "/$repoId");
+				// this is the first pull request; make a new bundle
 				$hg->makeBundle($baseHash, $filename);
+				$bundle->setProp("tip", $hg->getTip());
+			} else {
+				// this is not the first request; check that the repo has not been updated
+				if ($bundle->getProp("tip") != $hg->getTip()) {
+					$response = array('Error' => "The repo has changed since pullBundleChunk was first called");
+					return new HgResumeResponse(HgResumeResponse::RESET, $response);
+				}
 			}
 		} catch (Exception $e) {
 			$response = array('Error' => substr($e->getMessage(), 0, 1000));

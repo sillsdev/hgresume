@@ -23,11 +23,12 @@ class HgResumeResponse {
 	const RESEND = 2;
 
 	/* RESET
-	 * Data was received but the operation failed.
-	 * In the context of PushDataChunk, all chunks were received, but
-	 *      applying the bundle to the repo failed.  The operation failed
-	 *      and the sender must start over sending the bundle.
-	 * Resending the bundle is encouraged. */
+	 * Context: Push BundleChunk
+	 * All data chunks received but the unbundle operation failed. Try resending the bundle.
+	 *
+	 * Context: Pull BundleChunk
+	 * Repo changed in the middle of a pullBundleChunk session
+	 * The server's bundle data is destroyed and the client is encouraged to restart pulling */
 	// HTTP 400 Bad Request
 	const RESET = 3;
 

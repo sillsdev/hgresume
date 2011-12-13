@@ -159,6 +159,35 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(5, $response->Values['offset']);
 	}
 
+	function testPushBundleChunk_PushOneChunkThenRepoChanges_PushContinuesSuccessfully() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$transId = 'id123';
+		$this->api->finishPushBundle($transId);
+		$filename = "fileToAdd.txt";
+		$filePath = $this->testEnvironment->Path . "/" . $filename;
+		file_put_contents($filePath, "sample data to add");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+
+		$bundleData = file_get_contents(TestPath . "/data/sample.bundle");
+		$bundleSize = mb_strlen($bundleData, "8bit");
+		$chunkSize = 50;
+		for ($offset = 0; $offset < $bundleSize; $offset+=$chunkSize) {
+			if ($offset == 50) {
+				$hg->addAndCheckInFile($filename);
+			}
+
+			$chunkData = mb_substr($bundleData, $offset, $chunkSize, "8bit");
+			$actualChunkSize = mb_strlen($chunkData, "8bit");
+			$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, $bundleSize, md5($chunkData), $offset, $chunkData, 'id123');
+			if ($actualChunkSize < $chunkSize) { // this is the end
+				$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+			} else { // we're not finished yet
+				$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
+			}
+		}
+	}
+
 
 
 
@@ -253,6 +282,25 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		}
 		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
 		$this->assertEqual($wholeBundle, $assembledBundle);
+	}
+
+	function testPullBundleChunk_PullOneChunkThenRepoChanges_ResetCode() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = 'id123';
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->finishPullBundle($transId); // reset things on server
+		$filename = "fileToAdd.txt";
+		$filePath = $this->testEnvironment->Path . "/" . $filename;
+		file_put_contents($filePath, "sample data to add");
+
+		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, 0, $chunkSize, $transId);
+		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+		$hg->addAndCheckInFile($filename);
+		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, 50, $chunkSize, $transId);
+		$this->assertEqual(HgResumeResponse::RESET, $response->Code);
 	}
 }
 

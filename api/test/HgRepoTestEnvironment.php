@@ -2,13 +2,23 @@
 
 function recursiveDelete($str){
 	if(is_file($str)){
+		//print "deleting $str\n";
 		return @unlink($str);
 	}
+	elseif (substr($str, -1, 1) == '.') {
+		return;
+	}
 	elseif(is_dir($str)){
-		$scan = glob(rtrim($str,'/').'/*');
+		$str = rtrim($str, '/');
+		$pattern1 = $str . '/*';
+		$pattern2 = $str . '/.*';
+		$scan = glob("{" . "$pattern1,$pattern2" ."}", GLOB_BRACE);
+		//print count($scan) . " items found to delete for $str:\n";
+		//print_r($scan);
 		foreach($scan as $index=>$path){
 			recursiveDelete($path);
 		}
+		//print "deleting $str\n";
 		return @rmdir($str);
 	}
 }

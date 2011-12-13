@@ -72,6 +72,20 @@ class HgRunner {
 		}
 		return true;
 	}
+
+	function addAndCheckInFile($filePath) {
+		chdir($this->repoPath);
+		$cmd = "hg add $filePath";
+		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
+		if ($returnval != 0) {
+			throw new Exception("command '$cmd' failed!\n");
+		}
+		$cmd = "hg commit -u 'system' -m 'added file $filePath'";
+		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
+		if ($returnval != 0) {
+			throw new Exception("command '$cmd' failed!\n");
+		}
+	}
 }
 
 ?>

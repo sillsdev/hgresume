@@ -113,6 +113,21 @@ class BundleHelper {
 		$filename = $this->getAssemblyDir() . "/metadata";
 		file_put_contents($filename, serialize($arr));
 	}
+
+	function getProp($key) {
+		$metadata = $this->getMetadata();
+		if ($metadata[$key]) {
+			return $metadata[$key];
+		} else {
+			return "";
+		}
+	}
+
+	function setProp($key, $value) {
+		$metadata = $this->getMetadata();
+		$metadata[$key] = $value;
+		$this->setMetadata($metadata);
+	}
 }
 
 ?>

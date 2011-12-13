@@ -134,6 +134,16 @@ class TestOfHgRunner extends UnitTestCase {
 		$revisions = explode("\n", rtrim(file_get_contents(TestPath . "/data/sample.revision.list"), "\n"));
 		$this->assertEqual($hg->getRevisions(2,2), array_slice($revisions, 2, 2));
 	}
+
+	function testAddAndCheckInFile_AddFile_TipIsDifferent() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$filename = "fileToAdd.txt";
+		file_put_contents($this->testEnvironment->Path . "/" . $filename, "sample data to add");
+		$beforeTip = $hg->getTip();
+		$hg->addAndCheckInFile($filename);
+		$this->assertNotEqual($beforeTip, $hg->getTip());
+	}
 }
 
 ?>
