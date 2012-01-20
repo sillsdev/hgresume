@@ -6,7 +6,9 @@ require_once('src/HgResumeAPI.php');
 $repoPath = "/var/vcs/public";
 //$repoPath = sys_get_temp_dir() . "/hgresume_repoTestEnvironment";
 $api = new HgResumeAPI($repoPath);
-$restServer = new RestServer($api, true);
+
+// second param is debug mode
+$restServer = new RestServer($api, false);
 
 $restServer->url = $_SERVER['REQUEST_URI'];
 $restServer->args = $_REQUEST;

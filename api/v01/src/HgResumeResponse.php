@@ -26,9 +26,8 @@ class HgResumeResponse {
 	 * Context: Push BundleChunk
 	 * All data chunks received but the unbundle operation failed. Try resending the bundle.
 	 *
-	 * Context: Pull BundleChunk
-	 * Repo changed in the middle of a pullBundleChunk session
-	 * The server's bundle data is destroyed and the client is encouraged to restart pulling */
+	 * Context: FinishPullBundle
+	 * Repo changed during the pull session.  Client is advised to pull again. */
 	// HTTP 400 Bad Request
 	const RESET = 3;
 
@@ -56,6 +55,12 @@ class HgResumeResponse {
 	 * resulted in no changesets to bundle for a Pull */
 	// HTTP 304 Not Modified
 	const NOCHANGE = 7;
+
+	/* NOTAVAILABLE
+	 * The server is intentionally not available at the moment.  This status should be accompanied
+	 * by an error message explaining why the server is not available.  If known, a Retry-After header can stay after  */
+	// HTTP 503 Service Unavailable
+	const NOTAVAILABLE = 8;
 
 	public $Code;
 	public $Values;

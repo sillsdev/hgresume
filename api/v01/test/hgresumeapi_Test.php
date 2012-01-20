@@ -43,12 +43,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
 
-	function testPushBundleChunk_DataBadChecksum_ResendCode() {
-		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
-		$response = $this->api->pushBundleChunk('sampleHgRepo', 'fakehash', 10000, 'badCheckSum', 0, 'chunkData', 'id123');
-		$this->assertEqual(HgResumeResponse::RESEND, $response->Code);
-	}
-
 	function testPushBundleChunk_InvalidOffset_FailCode() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$chunkData = 'chunkData';
@@ -137,7 +131,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 	}
 
 	// SOW = start of window; AKA offset
-	function testPushBundleChunk_OffsetNotEqualToSOW_FailCodeReturnsSOW() {
+	function testPushBundleChunk_RequestedOffsetNotEqualToSOW_FailCodeReturnsSOW() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$transId = 'id123';
 		$this->api->finishPushBundle($transId);
@@ -145,7 +139,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12345'), 0, '12345', $transId);
 		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12345'), 10, '12345', $transId);
 		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
-		$this->assertEqual(5, $response->Values['offset']);
+		$this->assertEqual(5, $response->Values['sow']);
 	}
 
 	function testPushBundleChunk_PushWithOffsetZeroButSOWGreaterThanZero_ReceivedCodeReturnsSOW() {
@@ -156,7 +150,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12345'), 0, '12345', $transId);
 		$response = $this->api->pushBundleChunk('sampleHgRepo', $hash, 15, md5('12'), 0, '12', $transId);
 		$this->assertEqual(HgResumeResponse::RECEIVED, $response->Code);
-		$this->assertEqual(5, $response->Values['offset']);
+		$this->assertEqual(5, $response->Values['sow']);
 	}
 
 	function testPushBundleChunk_PushOneChunkThenRepoChanges_PushContinuesSuccessfully() {
@@ -284,23 +278,59 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
 
-	function testPullBundleChunk_PullOneChunkThenRepoChanges_ResetCode() {
+	function testPullBundleChunk_PullUntilFinishedThenRepoChanges_AssembledBundleIsValidAndResetCodeReceivedFromFinishPullBundle() {
 		$offset = 0;
 		$chunkSize = 50;
 		$transId = 'id123';
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
-		$hg = new HgRunner($this->testEnvironment->Path);
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
 		$this->api->finishPullBundle($transId); // reset things on server
+
+		$hg = new HgRunner($this->testEnvironment->Path);
 		$filename = "fileToAdd.txt";
 		$filePath = $this->testEnvironment->Path . "/" . $filename;
 		file_put_contents($filePath, "sample data to add");
 
-		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, 0, $chunkSize, $transId);
+		$assembledBundle = '';
+		$ctr = 1;
+		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
+		while ($offset < $bundleSize) {
+			if ($ctr == 3) {
+				$hg->addAndCheckInFile($filename);
+			}
+			$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize, $transId);
+			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+			$bundleSize = $response->Values['bundleSize'];
+			$chunkSize = $response->Values['chunkSize'];
+			$chunkData = $response->Content;
+
+			$assembledBundle .= $chunkData;
+			$offset += $chunkSize;
+			$ctr++;
+		}
+		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
+		$this->assertEqual($wholeBundle, $assembledBundle);
+		$finishResponse = $this->api->finishPullBundle($transId);
+		$this->assertEqual(HgResumeResponse::RESET, $finishResponse->Code);
+	}
+
+	function testIsAvailable_noMessageFile_SuccessCode() {
+		$messageFilePath = $this->api->RepoBasePath . "/maintenance_message.txt";
+		$this->assertFalse(file_exists($messageFilePath));
+		$response = $this->api->isAvailable();
 		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
-		$hg->addAndCheckInFile($filename);
-		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, 50, $chunkSize, $transId);
-		$this->assertEqual(HgResumeResponse::RESET, $response->Code);
+	}
+
+	function testIsAvailable_MessageFileExists_FailCodeWithMessage() {
+		$messageFilePath = $this->api->RepoBasePath . "/maintenance_message.txt";
+		$message = "Server is down for maintenance.";
+		file_put_contents($messageFilePath, $message);
+		$this->assertTrue(file_exists($messageFilePath));
+		$response = $this->api->isAvailable();
+		$this->assertEqual(HgResumeResponse::NOTAVAILABLE, $response->Code);
+		$this->assertEqual($message, $response->Content);
+
+
 	}
 }
 

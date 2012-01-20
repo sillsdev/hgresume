@@ -128,6 +128,11 @@ class BundleHelper {
 		$metadata[$key] = $value;
 		$this->setMetadata($metadata);
 	}
+
+	function hasProp($key) {
+		$metadata = $this->getMetadata();
+		return array_key_exists($key, $metadata);
+	}
 }
 
 ?>

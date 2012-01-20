@@ -71,6 +71,17 @@ class TestOfBundleHelper extends UnitTestCase {
 		$bundle->setOffset($sow);
 		$this->assertEqual($sow, $bundle->getOffset());
 	}
+
+	function testSetGetHasProp_SetMultipleProps_GetPropsOkAndVerifyHasPropsOk() {
+		$transId = "id123";
+		$bundle = new BundleHelper($transId);
+		$this->assertFalse($bundle->hasProp("tip"));
+		$bundle->setProp("tip", "7890");
+		$this->assertTrue($bundle->hasProp("tip"));
+		$bundle->setProp("repoId", "myRepo");
+		$this->assertEqual("7890", $bundle->getProp("tip"));
+		$this->assertEqual("myRepo", $bundle->getProp("repoId"));
+	}
 }
 
 ?>

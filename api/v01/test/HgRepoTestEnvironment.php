@@ -31,6 +31,7 @@ class HgRepoTestEnvironment {
 	function __construct() {
 		$this->BasePath = sys_get_temp_dir() . "/hgresume_repoTestEnvironment";
 		recursiveDelete($this->BasePath);
+		mkdir($this->BasePath);
 	}
 
 	function dispose() {

@@ -2,6 +2,7 @@
 
 class HgRunner {
 	var $repoPath;
+	var $logState;
 	const DEFAULT_HG = "/var/vcs/public";
 
 	function __construct($repoPath = DEFAULT_HG) {
@@ -10,14 +11,28 @@ class HgRunner {
 		} else {
 			throw new Exception("repo '$repoPath' doesn't exist!");
 		}
+		$logState = false;
+	}
+
+	private function logEvent($message) {
+		$logFilename = $this->repoPath . "/hgRunner.log";
+		$timestamp = date("YMd \TH.i");
+		if (!$this->logState) {
+			$this->logState = true;
+			file_put_contents($logFilename, "\n$timestamp\n", FILE_APPEND | LOCK_EX);
+		}
+		file_put_contents($logFilename, "$message\n", FILE_APPEND | LOCK_EX);
 	}
 
 	function unbundle($filepath) {
 		if (is_file($filepath)) {
 			chdir($this->repoPath);
-			$cmd = "hg unbundle -u $filepath";
-			exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
+			$cmd = "hg unbundle $filepath";
+			$this->logEvent("cmd: $cmd");
+			exec(escapeshellcmd($cmd), $output, $returnval);
 			if ($returnval != 0) {
+				$this->logEvent("previous cmd failed with returnval '$returnval' and output "
+					 . implode("|", $output));
 				throw new Exception("command '$cmd' failed!");
 			}
 		} else {
@@ -40,13 +55,8 @@ class HgRunner {
 	}
 
 	function getTip() {
-		chdir($this->repoPath);
-		$cmd = 'hg tip --template \'{node}\'';
-		exec($cmd, $output, $returnval);
-		if ($returnval != 0) {
-			throw new Exception("command '$cmd' failed!\n");
-		}
-		return $output[0];
+		$revisionArray = $this->getRevisions(0, 1);
+		return $revisionArray[0];
 	}
 
 	function getRevisions($offset, $quantity) {
@@ -54,7 +64,7 @@ class HgRunner {
 			throw new Exception("quantity parameter much be larger than 0");
 		}
 		chdir($this->repoPath);
-		$template = '{node}\n';
+		$template = '{node|short}\n';
 		$cmd = "hg log -b default --template $template";
 		exec(escapeshellcmd($cmd), $output, $returnval);
 		if ($returnval != 0) {

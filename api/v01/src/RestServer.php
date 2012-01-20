@@ -13,6 +13,9 @@ class RestServer {
 	function __construct($apiInstance, $debug = false) {
 		$this->api = $apiInstance;
 		$this->debug = $debug;
+		$this->args = array();
+		$this->url = "";
+		$this->postData = "";
 	}
 
 	function handle() {
@@ -22,8 +25,10 @@ class RestServer {
 		$path = pathinfo($urlparsed['path']);
 		$methodName = $path['basename'];
 
-		// add postData to $args
-		$args['postData'] = $this->postData;
+		// add postData to $args, if not already provided via GET
+		if (!array_key_exists("postData", $this->args)) {
+			$this->args['postData'] = $this->postData;
+		}
 
 		if (!method_exists($this->api, $methodName)) {
 			RestServer::serverError("Unknown method '$methodName'");
@@ -32,7 +37,7 @@ class RestServer {
 		$orderedParams = RestServer::buildOrderedParamArray($methodName, get_class($this->api), $this->args);
 		$response = call_user_func_array(array($this->api, $methodName), $orderedParams);
 
-		$this->_sendResponse($response);
+		RestServer::sendResponse($response, $this->debug);
 	}
 
 	static function buildOrderedParamArray($method, $className, $args) {
@@ -44,8 +49,8 @@ class RestServer {
 		// add web args in the order that the API function requires
 		foreach ($parameters as $p) {
 			$pName = $p->name;
-			if ($pName == 'chunkData') {
-				$pName = 'postData'; // special case to map postData -> chunkData param
+			if ($pName == 'data') {
+				$pName = 'postData'; // special case to map postData -> data param
 			} elseif (!array_key_exists($pName, $args)) {
 				RestServer::serverError("param $pName is required for method $method");
 			}
@@ -55,87 +60,91 @@ class RestServer {
 	}
 
 	static function serverError($msg) {
-		header("HTTP/1.1 200 OK");
-		header("Content-type: text/plain");
-		print($msg);
+		$response = new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => $msg), $msg);
+		RestServer::sendResponse($response, false);
 		exit();
 	}
 
-	function _sendResponse($response) {
-		list($httpCode, $hgrStatus) = $this->_mapHgResponse($response->Code);
+	static function sendResponse($response, $debug) {
+		list($httpCode, $hgrStatus) = RestServer::mapHgResponse($response->Code);
 
 		$headers = array();
-
-		// send HTTP status code
 		array_push($headers, "HTTP/1.1 " . $httpCode);
 
-		// send Version
-		array_push($headers, "X-HgR-Version: " . $response->Version);
-
-		// send an X-HgR-Status header
-		array_push($headers, "X-HgR-Status: $hgrStatus");
-
-		// send Key/Value headers
-		if (!is_null($response->Values)) {
-			foreach ($response->Values as $key => $value) {
-				array_push($headers, "X-HgR-" . ucfirst($key) . ": $value");
-			}
+		$contentSize = mb_strlen($response->Content, "8bit");
+		if ($contentSize > 0) {
+			array_push($headers, "Content-Length: $contentSize");
 		}
 
-		if (!$this->debug) {
+		array_push($headers, "X-HgR-Version: " . $response->Version);
+		array_push($headers, "X-HgR-Status: $hgrStatus");
+
+		// errormsg is a temporary debugging hack that should be removed ASAP
+		//$errormsg = "";
+		if (!is_null($response->Values)) {
+			foreach ($response->Values as $key => $value) {
+				//$errormsg .= "$key : $value, ";
+				array_push($headers, "X-HgR-" . ucfirst($key) . ": $value");
+			}
+			//error_log($errormsg . "\n", 3, "/tmp/cjh8");
+		}
+
+
+		if (!$debug) {
 			// regular mode
 			foreach ($headers as $header) {
 				header($header);
 			}
-			header("Content-type: text/plain\n\n");
 		} else {
 			// debug mode
-			header("Content-type: text/plain\n\n");
+			header("Content-Type: text/plain");
 			foreach ($headers as $header) {
-				print($header . "\n");
+				print($header);
 			}
 
 		}
-		print($response->Content);
+		if ($contentSize > 0) {
+			print($response->Content);
+		}
 	}
 
 
-	function _mapHgResponse($hgrCode) {
+	static function mapHgResponse($hgrCode) {
 		$httpcode = 0;
 		$codeString = '';
 		// map resume responsecode to http status code
 		switch ($hgrCode) {
 			case HgResumeResponse::SUCCESS:
 				$httpcode = "200 OK";
-				$codeString = 'Success';
+				$codeString = 'SUCCESS';
 				break;
 			case HgResumeResponse::RECEIVED:
 				$httpcode = "202 Accepted";
-				$codeString = 'Received';
+				$codeString = 'RECEIVED';
 				break;
 			case HgResumeResponse::RESEND:
 				$httpcode = "412 Precondition Failed";
-				$codeString = 'Resend';
+				$codeString = 'RESEND';
 				break;
 			case HgResumeResponse::RESET:
 				$httpcode = "400 Bad Request";
-				$codeString = 'Reset';
+				$codeString = 'RESET';
 				break;
 			case HgResumeResponse::UNAUTHORIZED:
 				$httpcode = "401 Unauthorized";
-				$codeString = 'Unauthorized';
+				$codeString = 'UNAUTHORIZED';
 				break;
 			case HgResumeResponse::FAIL:
 				$httpcode = "400 Bad Request";
-				$codeString = 'Fail';
+				$codeString = 'FAIL';
 				break;
 			case HgResumeResponse::UNKNOWNID:
 				$httpcode = "400 Bad Request";
-				$codeString = 'UnknownID';
+				$codeString = 'UNKNOWNID';
 				break;
 			case HgResumeResponse::NOCHANGE:
 				$httpcode = "304 Not Modified";
-				$codeString = 'NoChange';
+				$codeString = 'NOCHANGE';
 				break;
 			default:
 				throw new Exception("Unknown response code {$response->Code}");

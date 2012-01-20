@@ -14,6 +14,10 @@ class HgResumeAPI {
 	}
 
 	function pushBundleChunk($repoId, $baseHash, $bundleSize, $checksum, $offset, $data, $transId) {
+		$availability = $this->isAvailable();
+		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
+			return $availability;
+		}
 
 		/********* Parameter validation and checking ************/
 		// $repoId
@@ -22,10 +26,14 @@ class HgResumeAPI {
 		}
 		$hg = new HgRunner($this->RepoBasePath . "/$repoId");
 		// $checksum
+		// NOTE: I am abandoning the notion of checksum for the time being.  It's not useful or helpful since we can assume that TCP/IP is doing its job
+		// TODO: checksum code needs to be cleaned up and removed at some point
+		/*
 		if ($checksum != md5($data)) {
 			// invalid checksum: resend chunk data
 			return new HgResumeResponse(HgResumeResponse::RESEND, array('Error' => 'checksum failed', 'transId' => $transId));
 		}
+		*/
 		// $offset
 		if ($offset < 0 or $offset >= $bundleSize) {
 			//invalid offset
@@ -33,9 +41,12 @@ class HgResumeAPI {
 		}
 		// $data
 		$dataSize = mb_strlen($data, "8bit");
-		if ($dataSize == 0 or ($dataSize > $bundleSize - $offset)) {
+		if ($dataSize == 0) {
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data sent'));
+		}
+		if ($dataSize > $bundleSize - $offset) {
 			// no data or data larger than advertised bundle size
-			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data or data larger than remaining bundle size'));
+			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'data sent is larger than remaining bundle size'));
 		}
 		// $bundleSize
 		if (intval($bundleSize) < 0) {
@@ -53,9 +64,9 @@ class HgResumeAPI {
 		$startOfWindow = $bundle->getOffset();
 		if ($offset != $startOfWindow) { // these are usually equal.  It could be a client programming error if they are not
 			if ($dataSize + $offset <= $startOfWindow) {
-				return new HgResumeResponse(HgResumeResponse::RECEIVED, array('offset' => $startOfWindow, 'Note' => 'offset mismatch with startOfWindow'));
+				return new HgResumeResponse(HgResumeResponse::RECEIVED, array('sow' => $startOfWindow, 'Note' => 'offset mismatch with startOfWindow'));
 			} else {
-				return new HgResumeResponse(HgResumeResponse::FAIL, array('offset' => $startOfWindow, 'Error' => "offset mismatch with startOfWindow"));
+				return new HgResumeResponse(HgResumeResponse::FAIL, array('sow' => $startOfWindow, 'Error' => "offset mismatch with startOfWindow"));
 			}
 		}
 
@@ -71,7 +82,7 @@ class HgResumeAPI {
 			try {
 				$pathToBundle = $bundle->assemble();
 				$hg->unbundle($pathToBundle);
-				$bundle->setOffset($offset + $dataSize);
+				$bundle->setOffset($bundleSize);
 
 				$responseValues = array('transId' => $transId);
 				$response = new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
@@ -86,14 +97,19 @@ class HgResumeAPI {
 			return $response;
 		} else {
 			// received the chunk, but it's not the last one; we expect more chunks
-			$bundle->setOffset($offset + $dataSize);
-			$responseValues = array('transId' => $transId, 'sow' => $sow);
+			$newSow = $offset + $dataSize;
+			$bundle->setOffset($newSow);
+			$responseValues = array('transId' => $transId, 'sow' => $newSow);
 			return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
 		}
 	}
 
 
 	function pullBundleChunk($repoId, $baseHash, $offset, $chunkSize, $transId) {
+		$availability = $this->isAvailable();
+		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
+			return $availability;
+		}
 
 		/********* Parameter validation and checking ************/
 		// $repoId
@@ -114,6 +130,11 @@ class HgResumeAPI {
 			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid baseHash'));
 		}
 
+		// if the server's tip is equal to the baseHash requested, then no pull is necessary
+		if ($hg->getTip() == $baseHash) {
+			return new HgResumeResponse(HgResumeResponse::NOCHANGE);
+		}
+
 		try {
 			$pullDir = $bundle->getPullDir();
 			$filename = $bundle->getPullFilePath();
@@ -121,12 +142,7 @@ class HgResumeAPI {
 				// this is the first pull request; make a new bundle
 				$hg->makeBundle($baseHash, $filename);
 				$bundle->setProp("tip", $hg->getTip());
-			} else {
-				// this is not the first request; check that the repo has not been updated
-				if ($bundle->getProp("tip") != $hg->getTip()) {
-					$response = array('Error' => "The repo has changed since pullBundleChunk was first called");
-					return new HgResumeResponse(HgResumeResponse::RESET, $response);
-				}
+				$bundle->setProp("repoId", $repoId);
 			}
 		} catch (Exception $e) {
 			$response = array('Error' => substr($e->getMessage(), 0, 1000));
@@ -134,9 +150,6 @@ class HgResumeAPI {
 		}
 
 		$bundleSize = filesize($filename);
-		if ($bundleSize == 0) {
-			return new HgResumeResponse(HgResumeResponse::NOCHANGE);
-		}
 
 		// FAIL if offset is greater or equal to than bundlesize
 		if ($offset >= $bundleSize) {
@@ -163,9 +176,14 @@ class HgResumeAPI {
 	}
 
 	function getTip($repoId) {
+		$availability = $this->isAvailable();
+		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
+			return $availability;
+		}
 		try {
 			$hg = new HgRunner("{$this->RepoBasePath}/$repoId");
-			$response = array('Tip' => $hg->getTip());
+			$revisionList = $hg->getRevisions(0, 1);
+			$response = array('Tip' => $revisionList[0]);
 			$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, $response);
 		} catch (Exception $e) {
 			$response = array('Error' => substr($e->getMessage(), 0, 1000));
@@ -175,6 +193,10 @@ class HgResumeAPI {
 	}
 
 	function getRevisions($repoId, $offset, $quantity) {
+		$availability = $this->isAvailable();
+		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
+			return $availability;
+		}
 		try {
 			$hg = new HgRunner("{$this->RepoBasePath}/$repoId");
 			$revisionList = $hg->getRevisions($offset, $quantity);
@@ -187,6 +209,7 @@ class HgResumeAPI {
 	}
 
 	function finishPushBundle($transId) {
+		return; // for testing only - remove me
 		$bundle = new BundleHelper($transId);
 		if ($bundle->cleanUpPush()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
@@ -197,11 +220,38 @@ class HgResumeAPI {
 
 	function finishPullBundle($transId) {
 		$bundle = new BundleHelper($transId);
+		if ($bundle->hasProp("tip") and $bundle->hasProp("repoId")) {
+			$repoPath = $this->RepoBasePath . "/" . $bundle->getProp("repoId");
+			if (is_dir($repoPath)) { // a redundant check (sort of) to prevent tests from throwing that recycle the same transid
+				$hg = new HgRunner($repoPath);
+				// check that the repo has not been updated, since we a pull was initiated
+				if ($bundle->getProp("tip") != $hg->getTip()) {
+					$bundle->cleanUpPull();
+					return new HgResumeResponse(HgResumeResponse::RESET, $response);
+				}
+			}
+		}
 		if ($bundle->cleanUpPull()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
-		} else {
-			return new HgResumeResponse(HgResumeResponse::FAIL);
 		}
+		return new HgResumeResponse(HgResumeResponse::FAIL);
+	}
+
+	function isAvailable() {
+		if ($this->isAvailableAsBool()) {
+			return new HgResumeResponse(HgResumeResponse::SUCCESS);
+		}
+		$maintenanceFilePath = $this->RepoBasePath . "/maintenance_message.txt";
+		$message = file_get_contents($maintenanceFilePath);
+		return new HgResumeResponse(HgResumeResponse::NOTAVAILABLE, array(), $message);
+	}
+
+	private function isAvailableAsBool() {
+		$maintenanceFilePath = $this->RepoBasePath . "/maintenance_message.txt";
+		if (file_exists($maintenanceFilePath) && filesize($maintenanceFilePath) > 0) {
+			return false;
+		}
+		return true;
 	}
 }
 
