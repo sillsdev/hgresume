@@ -122,10 +122,6 @@ class RestServer {
 				$httpcode = "202 Accepted";
 				$codeString = 'RECEIVED';
 				break;
-			case HgResumeResponse::RESEND:
-				$httpcode = "412 Precondition Failed";
-				$codeString = 'RESEND';
-				break;
 			case HgResumeResponse::RESET:
 				$httpcode = "400 Bad Request";
 				$codeString = 'RESET';

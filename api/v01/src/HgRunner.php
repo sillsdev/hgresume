@@ -40,6 +40,12 @@ class HgRunner {
 		}
 	}
 
+	function update($revision = "") {
+		chdir($this->repoPath);
+		$cmd = "hg update $revision";
+		exec(escapeshellcmd($cmd), $output, $returnval);
+	}
+
 	function makeBundle($baseHash, $filename) {
 		chdir($this->repoPath);
 		$cmd = "hg bundle --base $baseHash $filename";

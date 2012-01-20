@@ -1,7 +1,5 @@
 <?php
 
-define('CACHE_PATH', "/var/cache/hgresume");
-
 class BundleHelper {
 	private $transId;
 	private $basePath;

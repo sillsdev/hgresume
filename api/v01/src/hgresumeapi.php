@@ -13,7 +13,7 @@ class HgResumeAPI {
 		$this->RepoBasePath = $repoPath;
 	}
 
-	function pushBundleChunk($repoId, $baseHash, $bundleSize, $checksum, $offset, $data, $transId) {
+	function pushBundleChunk($repoId, $baseHash, $bundleSize, $offset, $data, $transId) {
 		$availability = $this->isAvailable();
 		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
 			return $availability;
@@ -25,15 +25,7 @@ class HgResumeAPI {
 			return new HgResumeResponse(HgResumeResponse::UNKNOWNID);
 		}
 		$hg = new HgRunner($this->RepoBasePath . "/$repoId");
-		// $checksum
-		// NOTE: I am abandoning the notion of checksum for the time being.  It's not useful or helpful since we can assume that TCP/IP is doing its job
-		// TODO: checksum code needs to be cleaned up and removed at some point
-		/*
-		if ($checksum != md5($data)) {
-			// invalid checksum: resend chunk data
-			return new HgResumeResponse(HgResumeResponse::RESEND, array('Error' => 'checksum failed', 'transId' => $transId));
-		}
-		*/
+
 		// $offset
 		if ($offset < 0 or $offset >= $bundleSize) {
 			//invalid offset
@@ -162,14 +154,12 @@ class HgResumeAPI {
 		$data = fread($fileHandle, $chunkSize);
 		fclose($fileHandle);
 		$actualChunkSize = mb_strlen($data, "8bit");
-		$checksum = md5($data);
 
 		// construct and return the response
 		$response = new HgResumeResponse(HgResumeResponse::SUCCESS);
 		$response->Values = array(
 				'bundleSize' => $bundleSize,
 				'chunkSize' => $actualChunkSize,
-				'checksum' => $checksum,
 				'transId' => $transId);
 		$response->Content = $data;
 		return $response;
@@ -209,7 +199,7 @@ class HgResumeAPI {
 	}
 
 	function finishPushBundle($transId) {
-		return; // for testing only - remove me
+		//return; // for testing only - remove me
 		$bundle = new BundleHelper($transId);
 		if ($bundle->cleanUpPush()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);

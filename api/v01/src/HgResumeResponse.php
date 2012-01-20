@@ -1,7 +1,5 @@
 <?php
 
-define("API_VERSION", 1);
-
 class HgResumeResponse {
 	/* SUCCESS
 	 * Operation completed successfully.
@@ -16,11 +14,6 @@ class HgResumeResponse {
 	 * In the context of PushDataChunk, further *push* requests are expected. */
 	// HTTP 202 Accepted
 	const RECEIVED = 1;
-
-	/* RESEND
-	 * Data was received but did not validate with its checksum. */
-	// HTTP 412 Precondition Failed
-	const RESEND = 2;
 
 	/* RESET
 	 * Context: Push BundleChunk

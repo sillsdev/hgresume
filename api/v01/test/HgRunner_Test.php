@@ -31,6 +31,7 @@ class TestOfHgRunner extends UnitTestCase {
 		// check for success file
 		$hg = new HgRunner($repoPath);
 		$hg->unbundle($bundleFile);
+		$hg->update();
 		$this->assertTrue(file_exists($successFile));
 	}
 
