@@ -62,12 +62,8 @@ class BundleHelper {
 		return !is_file($bundleFile);
 	}
 
-	function assemble() {
-		$bundleDir = $this->getAssemblyDir();
-		chdir($bundleDir);
-		// TODO: Make this more robust to ensure chunks get glued together in the right order
-		system("cat *.chunk > bundle");
-		return "$bundleDir/bundle";
+	function getBundleFilename() {
+		return $this->getAssemblyDir() . "/bundle";
 	}
 
 	static function validateAlphaNumeric($str) {

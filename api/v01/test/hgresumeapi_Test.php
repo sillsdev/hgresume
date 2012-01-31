@@ -43,6 +43,12 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
 
+	function testPushBundleChunk_EmptyId_UnknownCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$response = $this->api->pushBundleChunk('', 'fakehash', 10000, 0, 'chunkData', 'id123');
+		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
+	}
+
 	function testPushBundleChunk_InvalidOffset_FailCode() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$chunkData = 'chunkData';
@@ -182,6 +188,12 @@ class TestOfHgResumeAPI extends UnitTestCase {
 
 
 
+
+	function testPullBundleChunk_EmptyId_UnknownCode() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$response = $this->api->pullBundleChunk('', '', 0, 50, 'id123');
+		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
+	}
 
 	function testPullBundleChunk_BogusId_UnknownCode() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");

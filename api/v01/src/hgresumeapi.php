@@ -7,7 +7,7 @@ require_once("BundleHelper.php");
 class HgResumeAPI {
 	var $RepoBasePath;
 
-	// Note: API_VERSION is defined in HgResumeResponse.php
+	// Note: API_VERSION is defined in config.php
 
 	function __construct($repoPath = "/var/vcs/public") {
 		$this->RepoBasePath = $repoPath;
@@ -21,7 +21,7 @@ class HgResumeAPI {
 
 		/********* Parameter validation and checking ************/
 		// $repoId
-		if (!is_dir($this->RepoBasePath . "/$repoId")) {
+		if (trim($repoId) == '' or !is_dir($this->RepoBasePath . "/$repoId")) {
 			return new HgResumeResponse(HgResumeResponse::UNKNOWNID);
 		}
 		$hg = new HgRunner($this->RepoBasePath . "/$repoId");
@@ -62,18 +62,16 @@ class HgResumeAPI {
 			}
 		}
 
-		$chunkPath = $bundle->getAssemblyDir();
-		$chunkFilename = sprintf("%s/%010d.chunk", $chunkPath, $offset);
-
-		if ($offset < $bundleSize) {
-			file_put_contents($chunkFilename, $data);
-		}
+		// write chunk data to bundle file
+		$bundleFile = fopen($bundle->getBundleFilename(), "a");
+		fseek($bundleFile, $offset);
+		fwrite($bundleFile, $data);
+		fclose($bundleFile);
 
 		// for the final chunk; assemble the bundle and apply the bundle
 		if ($bundleSize == $offset + $dataSize) {
 			try {
-				$pathToBundle = $bundle->assemble();
-				$hg->unbundle($pathToBundle);
+				$hg->unbundle($bundle->getBundleFilename());
 				$bundle->setOffset($bundleSize);
 
 				$responseValues = array('transId' => $transId);
@@ -105,7 +103,7 @@ class HgResumeAPI {
 
 		/********* Parameter validation and checking ************/
 		// $repoId
-		if (!is_dir($this->RepoBasePath . "/$repoId")) {
+		if (trim($repoId) == '' or !is_dir($this->RepoBasePath . "/$repoId")) {
 			return new HgResumeResponse(HgResumeResponse::UNKNOWNID);
 		}
 

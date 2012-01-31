@@ -47,17 +47,6 @@ class TestOfBundleHelper extends UnitTestCase {
 		$bundle = new BundleHelper("id; echo \"bad script!\"");
 	}
 
-	function testAssemble_FilesInDir_FilesConcatenated() {
-		$bundle = new BundleHelper("id123");
-		$dir = $bundle->getAssemblyDir();
-		file_put_contents("$dir/2.chunk", " brown fox");
-		file_put_contents("$dir/1.chunk", "The quick");
-		file_put_contents("$dir/3.chunk", " jumped...");
-		$bundleFilename = $bundle->assemble();
-		$this->assertEqual("The quick brown fox jumped...", file_get_contents($bundleFilename));
-		$bundle->cleanUpPush();
-	}
-
 	function testGetOffset_Unset_ReturnsZero() {
 		$transId = "id123";
 		$bundle = new BundleHelper($transId);
