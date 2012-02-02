@@ -141,17 +141,16 @@ class HgResumeAPI {
 
 		$bundleSize = filesize($filename);
 
-		// FAIL if offset is greater or equal to than bundlesize
-		if ($offset >= $bundleSize) {
-			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'offset greater than bundle size'));
+		$actualChunkSize = 0;
+		$data = "";
+		if ($offset < $bundleSize) {
+			// read the specified chunk of the bundle file
+			$fileHandle = fopen($filename, "r");
+			fseek($fileHandle, $offset);
+			$data = fread($fileHandle, $chunkSize);
+			fclose($fileHandle);
+			$actualChunkSize = mb_strlen($data, "8bit");
 		}
-
-		// read the specified chunk of the bundle file
-		$fileHandle = fopen($filename, "r");
-		fseek($fileHandle, $offset);
-		$data = fread($fileHandle, $chunkSize);
-		fclose($fileHandle);
-		$actualChunkSize = mb_strlen($data, "8bit");
 
 		// construct and return the response
 		$response = new HgResumeResponse(HgResumeResponse::SUCCESS);

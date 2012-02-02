@@ -229,6 +229,19 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);
 	}
 
+	function testPullBundleChunk_OffsetEqualToBundleSize_SuccessCodeWithZeroChunkSize() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->finishPullBundle('id123'); // reset things on server
+		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
+		$bundleSize = mb_strlen($wholeBundle, "8bit");
+		$offset = $bundleSize;
+		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, 1000, 'id123');
+		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+		$this->assertEqual(0, $response->Values['chunkSize']);
+		$this->assertEqual("", $response->Content);
+	}
+
 	function testPullBundleChunk_MiddleOffset_ValidData() {
 		$offset = 100;
 		$chunkSize = 100;
@@ -243,15 +256,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($chunkSize, $response->Values['chunkSize']);
 		$this->assertEqual($transId, $response->Values['transId']);
 		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);
-	}
-
-	function testPullBundleChunk_OffsetGreaterThanSize_FailCode() {
-		$offset = 10000; // the sample data is only 455 bytes
-		$chunkSize = 100;
-		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
-		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
-		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize, 'id123');
-		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 
 	function testPullBundleChunk_PullUntilFinished_AssembledBundleIsValid() {
