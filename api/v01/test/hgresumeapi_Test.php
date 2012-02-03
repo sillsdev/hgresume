@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/testconfig.php');
 require_once(SimpleTestPath . '/autorun.php');
 require_once(SourcePath . "/HgResumeAPI.php");
 require_once(SourcePath . "/HgResumeResponse.php");
+require_once(TestPath . "/HgRepoTestEnvironment.php");
 
 class TestOfHgResumeAPI extends UnitTestCase {
 
@@ -332,8 +333,31 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$response = $this->api->isAvailable();
 		$this->assertEqual(HgResumeResponse::NOTAVAILABLE, $response->Code);
 		$this->assertEqual($message, $response->Content);
+	}
 
+	function testPullBundleChunk_BaseHashIsZero_ReturnsEntireRepoAsBundle() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = 'id123';
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hash = "0";
+		$this->api->finishPullBundle($transId); // reset things on server
 
+		$assembledBundle = '';
+		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
+		while (mb_strlen($assembledBundle) < $bundleSize) {
+			$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize, $transId);
+			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+			$bundleSize = $response->Values['bundleSize'];
+			$chunkSize = $response->Values['chunkSize'];
+			$chunkData = $response->Content;
+			$assembledBundle .= $chunkData;
+			$offset += $chunkSize;
+		}
+		$wholeBundle = file_get_contents(TestPath . "/data/sample_entire.bundle");
+		$wholeBundleSize = mb_strlen($wholeBundle, "8bit");
+		print "bundleSize = $bundleSize, wholeBundleSize = $wholeBundleSize\n";
+		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
 }
 

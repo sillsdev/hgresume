@@ -48,7 +48,11 @@ class HgRunner {
 
 	function makeBundle($baseHash, $filename) {
 		chdir($this->repoPath);
-		$cmd = "hg bundle --base $baseHash $filename";
+		if ($bashHash == "0") {
+			$cmd = "hg bundle --all $filename";
+		} else {
+			$cmd = "hg bundle --base $baseHash $filename";
+		}
 		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
 		if ($returnval == 1) {
 			// no changesets available for that $baseHash
@@ -80,6 +84,9 @@ class HgRunner {
 	}
 
 	function isValidBase($hash) {
+		if ($hash == "0") { // special case indicating revision 0
+			return true;
+		}
 		chdir($this->repoPath);
 		$cmd = "hg update -r $hash";
 		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
