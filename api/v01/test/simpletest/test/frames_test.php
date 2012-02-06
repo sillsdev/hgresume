@@ -342,33 +342,33 @@ class TestOfFramesetPageInterface extends UnitTestCase {
 		$frame1 = new MockSimplePage();
 		$frame1->setReturnValue(
 				'getUrls',
-				array('http://www.lastcraft.com/', 'http://myserver/'));
+		array('http://www.lastcraft.com/', 'http://myserver/'));
 
 		$frame2 = new MockSimplePage();
 		$frame2->setReturnValue(
 				'getUrls',
-				array('http://www.lastcraft.com/', 'http://test/'));
+		array('http://www.lastcraft.com/', 'http://test/'));
 
 		$frameset = new SimpleFrameset($page);
 		$frameset->addFrame($frame1);
 		$frameset->addFrame($frame2);
 		$this->assertListInAnyOrder(
-				$frameset->getUrls(),
-				array('http://www.lastcraft.com/', 'http://myserver/', 'http://test/'));
+		$frameset->getUrls(),
+		array('http://www.lastcraft.com/', 'http://myserver/', 'http://test/'));
 	}
 
 	function testLabelledUrlsComeFromBothFrames() {
 		$frame1 = new MockSimplePage();
 		$frame1->setReturnValue(
 				'getUrlsByLabel',
-				array(new SimpleUrl('goodbye.php')),
-				array('a'));
+		array(new SimpleUrl('goodbye.php')),
+		array('a'));
 
 		$frame2 = new MockSimplePage();
 		$frame2->setReturnValue(
 				'getUrlsByLabel',
-				array(new SimpleUrl('hello.php')),
-				array('a'));
+		array(new SimpleUrl('hello.php')),
+		array('a'));
 
 		$frameset = new SimpleFrameset(new MockSimplePage());
 		$frameset->addFrame($frame1);
@@ -379,8 +379,8 @@ class TestOfFramesetPageInterface extends UnitTestCase {
 		$expected2 = new SimpleUrl('hello.php');
 		$expected2->setTarget('Two');
 		$this->assertEqual(
-				$frameset->getUrlsByLabel('a'),
-				array($expected1, $expected2));
+		$frameset->getUrlsByLabel('a'),
+		array($expected1, $expected2));
 	}
 
 	function testUrlByIdComesFromFirstFrameToRespond() {
@@ -470,8 +470,8 @@ class TestOfFramesetPageInterface extends UnitTestCase {
 		$form = new MockSimpleForm();
 		$frame->returns(
 				'getFormBySubmit',
-				$form,
-				array(new SimpleByLabel('a')));
+		$form,
+		array(new SimpleByLabel('a')));
 
 		$frameset = new SimpleFrameset(new MockSimplePage());
 		$frameset->addFrame(new MockSimplePage(), 'A');
@@ -490,8 +490,8 @@ class TestOfFramesetPageInterface extends UnitTestCase {
 		$form = new MockSimpleForm();
 		$frame->returns(
 				'getFormByImage',
-				$form,
-				array(new SimpleByLabel('a')));
+		$form,
+		array(new SimpleByLabel('a')));
 
 		$frameset = new SimpleFrameset(new MockSimplePage());
 		$frameset->addFrame(new MockSimplePage(), 'A');

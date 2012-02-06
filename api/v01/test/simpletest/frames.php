@@ -86,8 +86,8 @@ class SimpleFrameset {
 			return array();
 		}
 		return array_merge(
-				array($this->getPublicNameFromIndex($this->focus)),
-				$this->frames[$this->focus]->getFrameFocus());
+		array($this->getPublicNameFromIndex($this->focus)),
+		$this->frames[$this->focus]->getFrameFocus());
 	}
 
 	/**
@@ -188,7 +188,7 @@ class SimpleFrameset {
 		$report = array();
 		for ($i = 0; $i < count($this->frames); $i++) {
 			$report[$this->getPublicNameFromIndex($i)] =
-					$this->frames[$i]->getFrames();
+			$this->frames[$i]->getFrames();
 		}
 		return $report;
 	}
@@ -412,16 +412,16 @@ class SimpleFrameset {
 	function getUrlsByLabel($label) {
 		if (is_integer($this->focus)) {
 			return $this->tagUrlsWithFrame(
-					$this->frames[$this->focus]->getUrlsByLabel($label),
-					$this->focus);
+			$this->frames[$this->focus]->getUrlsByLabel($label),
+			$this->focus);
 		}
 		$urls = array();
 		foreach ($this->frames as $index => $frame) {
 			$urls = array_merge(
-					$urls,
-					$this->tagUrlsWithFrame(
-								$frame->getUrlsByLabel($label),
-								$index));
+			$urls,
+			$this->tagUrlsWithFrame(
+			$frame->getUrlsByLabel($label),
+			$index));
 		}
 		return $urls;
 	}
@@ -506,27 +506,27 @@ class SimpleFrameset {
 	}
 
 	/**
-		*    General form finder. Will search all the frames or
-		*    just the one in focus.
-		*    @param string $method    Method to use to find in a page.
-		*    @param string $attribute Label, name or ID.
-		*    @return SimpleForm    Form object containing the matching ID.
-		*    @access private
-		*/
+	 *    General form finder. Will search all the frames or
+	 *    just the one in focus.
+	 *    @param string $method    Method to use to find in a page.
+	 *    @param string $attribute Label, name or ID.
+	 *    @return SimpleForm    Form object containing the matching ID.
+	 *    @access private
+	 */
 	protected function findForm($method, $attribute) {
 		if (is_integer($this->focus)) {
 			return $this->findFormInFrame(
-					$this->frames[$this->focus],
-					$this->focus,
-					$method,
-					$attribute);
+			$this->frames[$this->focus],
+			$this->focus,
+			$method,
+			$attribute);
 		}
 		for ($i = 0; $i < count($this->frames); $i++) {
 			$form = $this->findFormInFrame(
-					$this->frames[$i],
-					$i,
-					$method,
-					$attribute);
+			$this->frames[$i],
+			$i,
+			$method,
+			$attribute);
 			if ($form) {
 				return $form;
 			}

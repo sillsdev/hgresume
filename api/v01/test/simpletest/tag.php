@@ -740,8 +740,8 @@ class SimpleTextAreaTag extends SimpleWidget {
 		}
 		if ($this->wrapIsEnabled()) {
 			return wordwrap(
-					$text,
-					(integer)$this->getAttribute('cols'),
+			$text,
+			(integer)$this->getAttribute('cols'),
 					"\r\n");
 		}
 		return $text;
@@ -792,9 +792,9 @@ class SimpleUploadTag extends SimpleWidget {
 			return;
 		}
 		$encoding->attach(
-				$this->getName(),
-				implode('', file($this->getValue())),
-				basename($this->getValue()));
+		$this->getName(),
+		implode('', file($this->getValue())),
+		basename($this->getValue()));
 	}
 }
 

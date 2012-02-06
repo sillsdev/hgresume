@@ -167,9 +167,9 @@ class ShellTestCase extends SimpleTestCase {
 	 */
 	function assertEqual($first, $second, $message = "%s") {
 		return $this->assert(
-				new EqualExpectation($first),
-				$second,
-				$message);
+		new EqualExpectation($first),
+		$second,
+		$message);
 	}
 
 	/**
@@ -184,9 +184,9 @@ class ShellTestCase extends SimpleTestCase {
 	 */
 	function assertNotEqual($first, $second, $message = "%s") {
 		return $this->assert(
-				new NotEqualExpectation($first),
-				$second,
-				$message);
+		new NotEqualExpectation($first),
+		$second,
+		$message);
 	}
 
 	/**
@@ -199,8 +199,8 @@ class ShellTestCase extends SimpleTestCase {
 	 */
 	function assertExitCode($status, $message = "%s") {
 		$message = sprintf($message, "Expected status code of [$status] from [" .
-				$this->last_command . "], but got [" .
-				$this->last_status . "]");
+		$this->last_command . "], but got [" .
+		$this->last_status . "]");
 		return $this->assertTrue($status === $this->last_status, $message);
 	}
 
@@ -215,9 +215,9 @@ class ShellTestCase extends SimpleTestCase {
 	function assertOutput($expected, $message = "%s") {
 		$shell = $this->getShell();
 		return $this->assert(
-				new EqualExpectation($expected),
-				$shell->getOutput(),
-				$message);
+		new EqualExpectation($expected),
+		$shell->getOutput(),
+		$message);
 	}
 
 	/**
@@ -231,9 +231,9 @@ class ShellTestCase extends SimpleTestCase {
 	function assertOutputPattern($pattern, $message = "%s") {
 		$shell = $this->getShell();
 		return $this->assert(
-				new PatternExpectation($pattern),
-				$shell->getOutput(),
-				$message);
+		new PatternExpectation($pattern),
+		$shell->getOutput(),
+		$message);
 	}
 
 	/**
@@ -247,9 +247,9 @@ class ShellTestCase extends SimpleTestCase {
 	function assertNoOutputPattern($pattern, $message = "%s") {
 		$shell = $this->getShell();
 		return $this->assert(
-				new NoPatternExpectation($pattern),
-				$shell->getOutput(),
-				$message);
+		new NoPatternExpectation($pattern),
+		$shell->getOutput(),
+		$message);
 	}
 
 	/**
@@ -287,9 +287,9 @@ class ShellTestCase extends SimpleTestCase {
 	 */
 	function assertFilePattern($pattern, $path, $message = "%s") {
 		return $this->assert(
-				new PatternExpectation($pattern),
-				implode('', file($path)),
-				$message);
+		new PatternExpectation($pattern),
+		implode('', file($path)),
+		$message);
 	}
 
 	/**
@@ -303,9 +303,9 @@ class ShellTestCase extends SimpleTestCase {
 	 */
 	function assertNoFilePattern($pattern, $path, $message = "%s") {
 		return $this->assert(
-				new NoPatternExpectation($pattern),
-				implode('', file($path)),
-				$message);
+		new NoPatternExpectation($pattern),
+		implode('', file($path)),
+		$message);
 	}
 
 	/**

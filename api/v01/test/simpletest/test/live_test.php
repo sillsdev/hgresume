@@ -16,7 +16,7 @@ class LiveHttpTestCase extends UnitTestCase {
 		$this->assertTrue($socket->isError());
 		$this->assertPattern(
 				'/Cannot open \\[bad_url:111\\] with \\[/',
-				$socket->getError());
+		$socket->getError());
 		$this->assertFalse($socket->isOpen());
 		$this->assertFalse($socket->write('A message'));
 	}

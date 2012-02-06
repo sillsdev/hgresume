@@ -338,7 +338,7 @@ class TestOfMockObjectsOutput extends UnitTestCase {
 		$dummy = &new MockDummy();
 		$dummy->expect(
 				'a',
-				array(new EqualExpectation('A', 'My part expectation message: %s')),
+		array(new EqualExpectation('A', 'My part expectation message: %s')),
 				'My expectation message: %s');
 		$dummy->a('A');
 		$dummy->a('B');        // Fail.

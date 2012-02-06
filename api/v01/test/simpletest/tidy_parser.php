@@ -47,7 +47,7 @@ class SimpleTidyPageBuilder {
 	function parse($response) {
 		$this->page = new SimplePage($response);
 		$tidied = tidy_parse_string($input = $this->insertGuards($response->getContent()),
-									array('output-xml' => false, 'wrap' => '0', 'indent' => 'no'),
+		array('output-xml' => false, 'wrap' => '0', 'indent' => 'no'),
 									'latin1');
 		$this->walkTree($tidied->html());
 		$this->attachLabels($this->widgets_by_id, $this->labels);
@@ -86,7 +86,7 @@ class SimpleTidyPageBuilder {
 	private function insertEmptyTagGuards($html) {
 		return preg_replace('#<(option|textarea)([^>]*)>(\s*)</(option|textarea)>#is',
 							'<\1\2>___EMPTY___\3</\4>',
-							$html);
+		$html);
 	}
 
 	/**
@@ -110,8 +110,8 @@ class SimpleTidyPageBuilder {
 	 */
 	private function insertTextareaSimpleWhitespaceGuards($html) {
 		return preg_replace_callback('#<textarea([^>]*)>(.*?)</textarea>#is',
-									 array($this, 'insertWhitespaceGuards'),
-									 $html);
+		array($this, 'insertWhitespaceGuards'),
+		$html);
 	}
 
 	/**
@@ -121,9 +121,9 @@ class SimpleTidyPageBuilder {
 	 */
 	private function insertWhitespaceGuards($matches) {
 		return '<textarea' . $matches[1] . '>' .
-				str_replace(array("\n", "\r", "\t", ' '),
-							array('___NEWLINE___', '___CR___', '___TAB___', '___SPACE___'),
-							$matches[2]) .
+		str_replace(array("\n", "\r", "\t", ' '),
+		array('___NEWLINE___', '___CR___', '___TAB___', '___SPACE___'),
+		$matches[2]) .
 				'</textarea>';
 	}
 
@@ -135,8 +135,8 @@ class SimpleTidyPageBuilder {
 	 */
 	private function stripTextareaWhitespaceGuards($html) {
 		return str_replace(array('___NEWLINE___', '___CR___', '___TAB___', '___SPACE___'),
-						   array("\n", "\r", "\t", ' '),
-						   $html);
+		array("\n", "\r", "\t", ' '),
+		$html);
 	}
 
 	/**
@@ -146,19 +146,19 @@ class SimpleTidyPageBuilder {
 	private function walkTree($node) {
 		if ($node->name == 'a') {
 			$this->page->addLink($this->tags()->createTag($node->name, (array)$node->attribute)
-										->addContent($this->innerHtml($node)));
+			->addContent($this->innerHtml($node)));
 		} elseif ($node->name == 'base' and isset($node->attribute['href'])) {
 			$this->page->setBase($node->attribute['href']);
 		} elseif ($node->name == 'title') {
 			$this->page->setTitle($this->tags()->createTag($node->name, (array)$node->attribute)
-										 ->addContent($this->innerHtml($node)));
+			->addContent($this->innerHtml($node)));
 		} elseif ($node->name == 'frameset') {
 			$this->page->setFrames($this->collectFrames($node));
 		} elseif ($node->name == 'form') {
 			$this->forms[] = $this->walkForm($node, $this->createEmptyForm($node));
 		} elseif ($node->name == 'label') {
 			$this->labels[] = $this->tags()->createTag($node->name, (array)$node->attribute)
-										   ->addContent($this->innerHtml($node));
+			->addContent($this->innerHtml($node));
 		} else {
 			$this->walkChildren($node);
 		}
@@ -192,12 +192,12 @@ class SimpleTidyPageBuilder {
 	private function walkForm($node, $form, $enclosing_label = '') {
 		if ($node->name == 'a') {
 			$this->page->addLink($this->tags()->createTag($node->name, (array)$node->attribute)
-											  ->addContent($this->innerHtml($node)));
+			->addContent($this->innerHtml($node)));
 		} elseif (in_array($node->name, array('input', 'button', 'textarea', 'select'))) {
 			$this->addWidgetToForm($node, $form, $enclosing_label);
 		} elseif ($node->name == 'label') {
 			$this->labels[] = $this->tags()->createTag($node->name, (array)$node->attribute)
-										   ->addContent($this->innerHtml($node));
+			->addContent($this->innerHtml($node));
 			if ($node->hasChildren()) {
 				foreach ($node->child as $child) {
 					$this->walkForm($child, $form, SimplePage::normalise($this->innerHtml($node)));
@@ -234,7 +234,7 @@ class SimpleTidyPageBuilder {
 			return;
 		}
 		$widget->setLabel($enclosing_label)
-			   ->addContent($this->innerHtml($node));
+		->addContent($this->innerHtml($node));
 		if ($node->name == 'select') {
 			$widget->addTags($this->collectSelectOptions($node));
 		}
@@ -266,7 +266,7 @@ class SimpleTidyPageBuilder {
 		$options = array();
 		if ($node->name == 'option') {
 			$options[] = $this->tags()->createTag($node->name, $this->attributes($node))
-									  ->addContent($this->innerHtml($node));
+			->addContent($this->innerHtml($node));
 		}
 		if ($node->hasChildren()) {
 			foreach ($node->child as $child) {

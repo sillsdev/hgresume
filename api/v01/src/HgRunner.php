@@ -32,7 +32,7 @@ class HgRunner {
 			exec(escapeshellcmd($cmd), $output, $returnval);
 			if ($returnval != 0) {
 				$this->logEvent("previous cmd failed with returnval '$returnval' and output "
-					 . implode("|", $output));
+				. implode("|", $output));
 				throw new Exception("command '$cmd' failed!");
 			}
 		} else {

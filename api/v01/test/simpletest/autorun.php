@@ -47,8 +47,8 @@ function run_local_tests() {
 		$candidates = capture_new_classes();
 		$loader = new SimpleFileLoader();
 		$suite = $loader->createSuiteFromClasses(
-				basename(initial_file()),
-				$loader->selectRunnableTests($candidates));
+		basename(initial_file()),
+		$loader->selectRunnableTests($candidates));
 		return $suite->run(new DefaultReporter());
 	} catch (Exception $stack_frame_fix) {
 		print $stack_frame_fix->getMessage();
@@ -93,7 +93,7 @@ function initial_file() {
 function capture_new_classes() {
 	global $SIMPLETEST_AUTORUNNER_INITIAL_CLASSES;
 	return array_map('strtolower', array_diff(get_declared_classes(),
-							$SIMPLETEST_AUTORUNNER_INITIAL_CLASSES ?
-							$SIMPLETEST_AUTORUNNER_INITIAL_CLASSES : array()));
+	$SIMPLETEST_AUTORUNNER_INITIAL_CLASSES ?
+	$SIMPLETEST_AUTORUNNER_INITIAL_CLASSES : array()));
 }
 ?>

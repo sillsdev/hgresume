@@ -9,7 +9,7 @@ Mock::generate('SimpleHttpResponse');
 Mock::generatePartial(
 		'SimplePhpPageBuilder',
 		'PartialSimplePhpPageBuilder',
-		array('createPage', 'createParser'));
+array('createPage', 'createParser'));
 Mock::generate('SimpleHtmlSaxParser');
 Mock::generate('SimplePhpPageBuilder');
 
@@ -393,7 +393,7 @@ class TestOfHtmlSaxParser extends UnitTestCase {
 		$listener = $this->createListener();
 		$listener->expectOnce(
 				'startElement',
-				array('input', array('name' => 'a.b.c', 'value' => 'd')));
+		array('input', array('name' => 'a.b.c', 'value' => 'd')));
 		$parser = new SimpleHtmlSaxParser($listener);
 		$this->assertTrue($parser->parse('<input name=a.b.c value = d>'));
 	}
@@ -447,7 +447,7 @@ class TestOfHtmlSaxParser extends UnitTestCase {
 		$listener = $this->createListener();
 		$listener->expectOnce(
 				'startElement',
-				array('option', array('value' => '', 'selected' => '')));
+		array('option', array('value' => '', 'selected' => '')));
 		$listener->expectOnce('addContent', array('label'));
 		$listener->expectOnce('endElement', array('option'));
 		$parser = new SimpleHtmlSaxParser($listener);
@@ -458,7 +458,7 @@ class TestOfHtmlSaxParser extends UnitTestCase {
 		$listener = $this->createListener();
 		$listener->expectOnce(
 				'startElement',
-				array('a', array('href' => 'here.html', 'style' => "'cool'")));
+		array('a', array('href' => 'here.html', 'style' => "'cool'")));
 		$listener->expectOnce('addContent', array('label'));
 		$listener->expectOnce('endElement', array('a'));
 		$parser = new SimpleHtmlSaxParser($listener);
@@ -469,7 +469,7 @@ class TestOfHtmlSaxParser extends UnitTestCase {
 		$listener = $this->createListener();
 		$listener->expectOnce(
 				'startElement',
-				array('input', array('type' => 'submit', 'name' => 'N', 'value' => 'V')));
+		array('input', array('type' => 'submit', 'name' => 'N', 'value' => 'V')));
 		$parser = new SimpleHtmlSaxParser($listener);
 		$this->assertTrue($parser->parse('<input type="submit" name="N" value="V" />'));
 	}

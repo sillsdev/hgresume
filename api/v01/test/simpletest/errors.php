@@ -149,9 +149,9 @@ class SimpleErrorQueue {
 		if ($expectation = $this->extractExpectation()) {
 			list($expected, $message) = $expectation;
 			$this->test->assert($expected, $content, sprintf(
-					$message,
+			$message,
 					"%s -> PHP error [$content] severity [" .
-							$this->getSeverityAsString($severity) .
+			$this->getSeverityAsString($severity) .
 							"] in [$filename] line [$line]"));
 		} else {
 			$this->test->error($severity, $content, $filename, $line);
@@ -195,18 +195,18 @@ class SimpleErrorQueue {
 	 */
 	static function getSeverityAsString($severity) {
 		static $map = array(
-				E_STRICT => 'E_STRICT',
-				E_ERROR => 'E_ERROR',
-				E_WARNING => 'E_WARNING',
-				E_PARSE => 'E_PARSE',
-				E_NOTICE => 'E_NOTICE',
-				E_CORE_ERROR => 'E_CORE_ERROR',
-				E_CORE_WARNING => 'E_CORE_WARNING',
-				E_COMPILE_ERROR => 'E_COMPILE_ERROR',
-				E_COMPILE_WARNING => 'E_COMPILE_WARNING',
-				E_USER_ERROR => 'E_USER_ERROR',
-				E_USER_WARNING => 'E_USER_WARNING',
-				E_USER_NOTICE => 'E_USER_NOTICE');
+		E_STRICT => 'E_STRICT',
+		E_ERROR => 'E_ERROR',
+		E_WARNING => 'E_WARNING',
+		E_PARSE => 'E_PARSE',
+		E_NOTICE => 'E_NOTICE',
+		E_CORE_ERROR => 'E_CORE_ERROR',
+		E_CORE_WARNING => 'E_CORE_WARNING',
+		E_COMPILE_ERROR => 'E_COMPILE_ERROR',
+		E_COMPILE_WARNING => 'E_COMPILE_WARNING',
+		E_USER_ERROR => 'E_USER_ERROR',
+		E_USER_WARNING => 'E_USER_WARNING',
+		E_USER_NOTICE => 'E_USER_NOTICE');
 		if (defined('E_RECOVERABLE_ERROR')) {
 			$map[E_RECOVERABLE_ERROR] = 'E_RECOVERABLE_ERROR';
 		}

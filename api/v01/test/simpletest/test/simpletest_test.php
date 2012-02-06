@@ -18,7 +18,7 @@ class TestOfStackTrace extends UnitTestCase {
 	function testCanFindAssertInTrace() {
 		$trace = new SimpleStackTrace(array('assert'));
 		$this->assertEqual(
-				$trace->traceMethod(array(array(
+		$trace->traceMethod(array(array(
 						'file' => '/my_test.php',
 						'line' => 24,
 						'function' => 'assertSomething'))),
@@ -32,8 +32,8 @@ class TestOfContext extends UnitTestCase {
 
 	function testCurrentContextIsUnique() {
 		$this->assertSame(
-				SimpleTest::getContext(),
-				SimpleTest::getContext());
+		SimpleTest::getContext(),
+		SimpleTest::getContext());
 	}
 
 	function testContextHoldsCurrentTestCase() {
@@ -44,8 +44,8 @@ class TestOfContext extends UnitTestCase {
 	function testResourceIsSingleInstanceWithContext() {
 		$context = new SimpleTestContext();
 		$this->assertSame(
-				$context->get('DummyResource'),
-				$context->get('DummyResource'));
+		$context->get('DummyResource'),
+		$context->get('DummyResource'));
 	}
 
 	function testClearingContextResetsResources() {

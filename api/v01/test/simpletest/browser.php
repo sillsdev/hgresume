@@ -73,8 +73,8 @@ class SimpleBrowserHistory {
 	function recordEntry($url, $parameters) {
 		$this->dropFuture();
 		array_push(
-				$this->sequence,
-				array('url' => $url, 'parameters' => $parameters));
+		$this->sequence,
+		array('url' => $url, 'parameters' => $parameters));
 		$this->position++;
 	}
 
@@ -172,9 +172,9 @@ class SimpleBrowser {
 	function __construct() {
 		$this->user_agent = $this->createUserAgent();
 		$this->user_agent->useProxy(
-				SimpleTest::getDefaultProxy(),
-				SimpleTest::getDefaultProxyUsername(),
-				SimpleTest::getDefaultProxyPassword());
+		SimpleTest::getDefaultProxy(),
+		SimpleTest::getDefaultProxyUsername(),
+		SimpleTest::getDefaultProxyPassword());
 		$this->page = new SimplePage();
 		$this->history = $this->createHistory();
 		$this->ignore_frames = false;
@@ -333,8 +333,8 @@ class SimpleBrowser {
 	protected function loadPage($url, $parameters) {
 		$this->page = $this->fetch($url, $parameters);
 		$this->history->recordEntry(
-				$this->page->getUrl(),
-				$this->page->getRequestData());
+		$this->page->getUrl(),
+		$this->page->getRequestData());
 		return $this->page->getRaw();
 	}
 
@@ -564,9 +564,9 @@ class SimpleBrowser {
 		$frames = $this->page->getFrameFocus();
 		if (count($frames) > 0) {
 			$this->loadFrame(
-					$frames,
-					$this->page->getUrl(),
-					$this->page->getRequestData());
+			$frames,
+			$this->page->getUrl(),
+			$this->page->getRequestData());
 			return $this->page->getRaw();
 		}
 		if ($url = $this->history->getUrl()) {
@@ -635,10 +635,10 @@ class SimpleBrowser {
 			return false;
 		}
 		$this->user_agent->setIdentity(
-				$url->getHost(),
-				$this->page->getRealm(),
-				$username,
-				$password);
+		$url->getHost(),
+		$this->page->getRealm(),
+		$username,
+		$password);
 		return $this->retry();
 	}
 
@@ -901,8 +901,8 @@ class SimpleBrowser {
 			return false;
 		}
 		$success = $this->load(
-				$form->getAction(),
-				$form->submitButton(new SimpleByLabel($label), $additional));
+		$form->getAction(),
+		$form->submitButton(new SimpleByLabel($label), $additional));
 		return ($success ? $this->getContent() : $success);
 	}
 
@@ -919,8 +919,8 @@ class SimpleBrowser {
 			return false;
 		}
 		$success = $this->load(
-				$form->getAction(),
-				$form->submitButton(new SimpleByName($name), $additional));
+		$form->getAction(),
+		$form->submitButton(new SimpleByName($name), $additional));
 		return ($success ? $this->getContent() : $success);
 	}
 
@@ -937,8 +937,8 @@ class SimpleBrowser {
 			return false;
 		}
 		$success = $this->load(
-				$form->getAction(),
-				$form->submitButton(new SimpleById($id), $additional));
+		$form->getAction(),
+		$form->submitButton(new SimpleById($id), $additional));
 		return ($success ? $this->getContent() : $success);
 	}
 
@@ -971,8 +971,8 @@ class SimpleBrowser {
 			return false;
 		}
 		$success = $this->load(
-				$form->getAction(),
-				$form->submitImage(new SimpleByLabel($label), $x, $y, $additional));
+		$form->getAction(),
+		$form->submitImage(new SimpleByLabel($label), $x, $y, $additional));
 		return ($success ? $this->getContent() : $success);
 	}
 
@@ -994,8 +994,8 @@ class SimpleBrowser {
 			return false;
 		}
 		$success = $this->load(
-				$form->getAction(),
-				$form->submitImage(new SimpleByName($name), $x, $y, $additional));
+		$form->getAction(),
+		$form->submitImage(new SimpleByName($name), $x, $y, $additional));
 		return ($success ? $this->getContent() : $success);
 	}
 
@@ -1016,8 +1016,8 @@ class SimpleBrowser {
 			return false;
 		}
 		$success = $this->load(
-				$form->getAction(),
-				$form->submitImage(new SimpleById($id), $x, $y, $additional));
+		$form->getAction(),
+		$form->submitImage(new SimpleById($id), $x, $y, $additional));
 		return ($success ? $this->getContent() : $success);
 	}
 
@@ -1044,8 +1044,8 @@ class SimpleBrowser {
 			return false;
 		}
 		$success = $this->load(
-				$form->getAction(),
-				$form->submit($additional));
+		$form->getAction(),
+		$form->submit($additional));
 		return ($success ? $this->getContent() : $success);
 	}
 

@@ -59,7 +59,7 @@ class TestOfExceptionTrap extends UnitTestCase {
 		$test = new MockSimpleTestCase();
 		$test->expectOnce('assert', array(
 				'*',
-				new ExceptionExpectation(new Exception()),
+		new ExceptionExpectation(new Exception()),
 				'message'));
 		$queue = new SimpleExceptionTrap();
 		$queue->expectException(new ExceptionExpectation(new Exception()), 'message');

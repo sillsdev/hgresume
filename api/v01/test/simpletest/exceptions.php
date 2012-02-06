@@ -114,7 +114,7 @@ class ExceptionExpectation extends SimpleExpectation {
 		}
 		return "Exception [" . $this->describeException($compare) .
 				"] should match [" .
-				$this->describeException($this->expected) . "]";
+		$this->describeException($this->expected) . "]";
 	}
 
 	/**

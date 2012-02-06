@@ -54,11 +54,11 @@ class TestOfSpl extends UnitTestCase {
 				continue;
 			}
 			if (version_compare(PHP_VERSION, '5.1', '<') &&
-				$class == 'CachingIterator' ||
-				$class == 'CachingRecursiveIterator' ||
-				$class == 'FilterIterator' ||
-				$class == 'LimitIterator' ||
-				$class == 'ParentIterator') {
+			$class == 'CachingIterator' ||
+			$class == 'CachingRecursiveIterator' ||
+			$class == 'FilterIterator' ||
+			$class == 'LimitIterator' ||
+			$class == 'ParentIterator') {
 				// These iterators require an iterator be passed to them during
 				// construction in PHP 5.0; there is no way for SimpleTest
 				// to supply such an iterator, however, so support for it is
@@ -74,13 +74,13 @@ class TestOfSpl extends UnitTestCase {
 	function testExtensionOfCommonSplClasses() {
 		Mock::generate('IteratorImplementation');
 		$this->assertIsA(
-				new IteratorImplementation(),
+		new IteratorImplementation(),
 				'IteratorImplementation');
 		Mock::generate('IteratorAggregateImplementation');
 		$this->assertIsA(
-				new IteratorAggregateImplementation(),
+		new IteratorAggregateImplementation(),
 				'IteratorAggregateImplementation');
-   }
+	}
 }
 
 class WithHint {

@@ -143,9 +143,9 @@ class SimpleCookie {
 	 */
 	function isValidPath($path) {
 		return (strncmp(
-				$this->fixPath($path),
-				$this->getPath(),
-				strlen($this->getPath())) == 0);
+		$this->fixPath($path),
+		$this->getPath(),
+		strlen($this->getPath())) == 0);
 	}
 
 	/**
@@ -301,10 +301,10 @@ class SimpleCookieJar {
 	protected function findFirstMatch($cookie) {
 		for ($i = 0; $i < count($this->cookies); $i++) {
 			$is_match = $this->isMatch(
-					$cookie,
-					$this->cookies[$i]->getHost(),
-					$this->cookies[$i]->getPath(),
-					$this->cookies[$i]->getName());
+			$cookie,
+			$this->cookies[$i]->getHost(),
+			$this->cookies[$i]->getPath(),
+			$this->cookies[$i]->getName());
 			if ($is_match) {
 				return $i;
 			}

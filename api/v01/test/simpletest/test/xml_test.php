@@ -162,7 +162,7 @@ class TestOfXmlResultsParsing extends UnitTestCase {
 		$this->sendValidStart($parser);
 		$this->assertTrue($parser->parse(
 				"<signal type=\"a_signal\"><![CDATA[" .
-				serialize($signal) . "]]></signal>\n"));
+		serialize($signal) . "]]></signal>\n"));
 		$this->sendValidEnd($parser);
 	}
 

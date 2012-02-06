@@ -7,8 +7,8 @@
  */
 
 /**#@+
-	*   include other SimpleTest class files
-	*/
+ *   include other SimpleTest class files
+ */
 require_once(dirname(__FILE__) . '/http.php');
 require_once(dirname(__FILE__) . '/php_parser.php');
 require_once(dirname(__FILE__) . '/tag.php');
