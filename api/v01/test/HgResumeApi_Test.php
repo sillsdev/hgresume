@@ -1,7 +1,7 @@
 <?php
 require_once(dirname(__FILE__) . '/testconfig.php');
 require_once(SimpleTestPath . '/autorun.php');
-require_once(SourcePath . "/HgResumeAPI.php");
+require_once(SourcePath . "/HgResumeApi.php");
 require_once(SourcePath . "/HgResumeResponse.php");
 require_once(TestPath . "/HgRepoTestEnvironment.php");
 
@@ -355,8 +355,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 			$offset += $chunkSize;
 		}
 		$wholeBundle = file_get_contents(TestPath . "/data/sample_entire.bundle");
-		$wholeBundleSize = mb_strlen($wholeBundle, "8bit");
-		print "bundleSize = $bundleSize, wholeBundleSize = $wholeBundleSize\n";
+		//$wholeBundleSize = mb_strlen($wholeBundle, "8bit");
 		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
 }

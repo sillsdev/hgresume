@@ -48,7 +48,7 @@ class HgRunner {
 
 	function makeBundle($baseHash, $filename) {
 		chdir($this->repoPath);
-		if ($bashHash == "0") {
+		if ($baseHash == "0") {
 			$cmd = "hg bundle --all $filename";
 		} else {
 			$cmd = "hg bundle --base $baseHash $filename";
