@@ -214,7 +214,7 @@ class HgResumeAPI {
 				// check that the repo has not been updated, since we a pull was initiated
 				if ($bundle->getProp("tip") != $hg->getTip()) {
 					$bundle->cleanUpPull();
-					return new HgResumeResponse(HgResumeResponse::RESET, $response);
+					return new HgResumeResponse(HgResumeResponse::RESET);
 				}
 			}
 		}

@@ -225,7 +225,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
 		$expectedChunkData = mb_substr($wholeBundle, $offset, $chunkSize, "8bit");
-		$this->assertEqual($offset, $response->Values['offset']);
 		$this->assertEqual($chunkSize, $response->Values['chunkSize']);
 		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);
 	}

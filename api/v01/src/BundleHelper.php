@@ -81,7 +81,7 @@ class BundleHelper {
 	// get the offset of the data we've collected
 	function getOffset() {
 		$metadata = $this->getMetadata();
-		if ($metadata['offset']) {
+		if (array_key_exists('offset', $metadata)) {
 			return $metadata['offset'];
 		} else {
 			return 0;
