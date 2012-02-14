@@ -43,14 +43,14 @@ class TestOfReflection extends UnitTestCase {
 	function testNoInterfacesForPHP4() {
 		$reflection = new SimpleReflection('AnyOldThing');
 		$this->assertEqual(
-		$reflection->getInterfaces(),
-		array());
+				$reflection->getInterfaces(),
+				array());
 	}
 
 	function testMostGeneralPossibleSignature() {
 		$reflection = new SimpleReflection('AnyOldThing');
 		$this->assertEqualIgnoringCase(
-		$reflection->getSignature('aMethod'),
+				$reflection->getSignature('aMethod'),
 				'function &aMethod()');
 	}
 

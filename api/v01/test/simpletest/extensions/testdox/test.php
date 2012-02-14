@@ -100,7 +100,7 @@ class TestOfTestDoxReporter extends UnitTestCase
 		$buffer = ob_get_clean();
 		$this->assertEqual(
 			'- supports all uppercase test prefix even though i do not know why you would do that',
-		$buffer
+			$buffer
 		);
 	}
 }

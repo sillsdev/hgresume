@@ -43,8 +43,8 @@ class XmlReporter extends SimpleReporter {
 	 */
 	protected function getIndent($offset = 0) {
 		return str_repeat(
-		$this->indent,
-		count($this->getTestList()) + $offset);
+				$this->indent,
+				count($this->getTestList()) + $offset);
 	}
 
 	/**
@@ -56,9 +56,9 @@ class XmlReporter extends SimpleReporter {
 	 */
 	function toParsedXml($text) {
 		return str_replace(
-		array('&', '<', '>', '"', '\''),
-		array('&amp;', '&lt;', '&gt;', '&quot;', '&apos;'),
-		$text);
+				array('&', '<', '>', '"', '\''),
+				array('&amp;', '&lt;', '&gt;', '&quot;', '&apos;'),
+				$text);
 	}
 
 	/**
@@ -73,7 +73,7 @@ class XmlReporter extends SimpleReporter {
 		print "<" . $this->namespace . "group size=\"$size\">\n";
 		print $this->getIndent(1);
 		print "<" . $this->namespace . "name>" .
-		$this->toParsedXml($test_name) .
+				$this->toParsedXml($test_name) .
 				"</" . $this->namespace . "name>\n";
 	}
 
@@ -99,7 +99,7 @@ class XmlReporter extends SimpleReporter {
 		print "<" . $this->namespace . "case>\n";
 		print $this->getIndent(1);
 		print "<" . $this->namespace . "name>" .
-		$this->toParsedXml($test_name) .
+				$this->toParsedXml($test_name) .
 				"</" . $this->namespace . "name>\n";
 	}
 
@@ -125,7 +125,7 @@ class XmlReporter extends SimpleReporter {
 		print "<" . $this->namespace . "test>\n";
 		print $this->getIndent(1);
 		print "<" . $this->namespace . "name>" .
-		$this->toParsedXml($test_name) .
+				$this->toParsedXml($test_name) .
 				"</" . $this->namespace . "name>\n";
 	}
 
@@ -504,7 +504,7 @@ class SimpleTestXmlParser {
 	function parse($chunk) {
 		if (! xml_parse($this->expat, $chunk)) {
 			trigger_error('XML parse error with ' .
-			xml_error_string(xml_get_error_code($this->expat)));
+					xml_error_string(xml_get_error_code($this->expat)));
 			return false;
 		}
 		return true;
@@ -613,8 +613,8 @@ class SimpleTestXmlParser {
 			$this->listener->paintSkip($this->content);
 		} elseif ($tag == 'SIGNAL') {
 			$this->listener->paintSignal(
-			$this->attributes['TYPE'],
-			unserialize($this->content));
+					$this->attributes['TYPE'],
+					unserialize($this->content));
 		} elseif ($tag == 'MESSAGE') {
 			$this->listener->paintMessage($this->content);
 		} elseif ($tag == 'FORMATTED') {

@@ -30,6 +30,7 @@ class SimpleCommandLineParser {
 	private $case = '';
 	private $test = '';
 	private $xml = false;
+	private $junit = false;
 	private $help = false;
 	private $no_skips = false;
 
@@ -52,6 +53,8 @@ class SimpleCommandLineParser {
 				}
 			} elseif (preg_match('/^--?(xml|x)$/', $argument)) {
 				$this->xml = true;
+			} elseif (preg_match('/^--?(junit|j)$/', $argument)) {
+				$this->junit = true;
 			} elseif (preg_match('/^--?(no-skip|no-skips|s)$/', $argument)) {
 				$this->no_skips = true;
 			} elseif (preg_match('/^--?(help|h)$/', $argument)) {
@@ -85,6 +88,14 @@ class SimpleCommandLineParser {
 	}
 
 	/**
+	 *    Output should be JUnit or not.
+	 *    @return boolean        True if JUnit desired.
+	 */
+	function isJUnit() {
+		return $this->junit;
+	}
+
+	/**
 	 *    Output should suppress skip messages.
 	 *    @return boolean        True for no skips.
 	 */
@@ -97,7 +108,7 @@ class SimpleCommandLineParser {
 	 *    @return boolean        True if help message desired.
 	 */
 	function help() {
-		return $this->help && ! $this->xml;
+		return $this->help && ! ($this->xml || $this->junit);
 	}
 
 	/**
@@ -113,6 +124,7 @@ Usage: php <test_file> [args...]
 	-t <method>     Run only the test method <method>
 	-s              Suppress skip messages
 	-x              Return test results in XML
+	-j              Return test results in JUnit format
 	-h              Display this help message
 
 HELP;
@@ -135,24 +147,30 @@ class DefaultReporter extends SimpleReporterDecorator {
 	function __construct() {
 		if (SimpleReporter::inCli()) {
 			$parser = new SimpleCommandLineParser($_SERVER['argv']);
-			$interfaces = $parser->isXml() ? array('XmlReporter') : array('TextReporter');
+			if ($parser->isXml()) {
+				$interfaces = array('XmlReporter');
+			} else if ($parser->isJUnit()) {
+				$interfaces = array('JUnitXmlReporter');
+			} else {
+				$interfaces = array('TextReporter');
+			}
 			if ($parser->help()) {
 				// I'm not sure if we should do the echo'ing here -- ezyang
 				echo $parser->getHelpText();
 				exit(1);
 			}
 			$reporter = new SelectiveReporter(
-			SimpleTest::preferred($interfaces),
-			$parser->getTestCase(),
-			$parser->getTest());
+					SimpleTest::preferred($interfaces),
+					$parser->getTestCase(),
+					$parser->getTest());
 			if ($parser->noSkips()) {
 				$reporter = new NoSkipsReporter($reporter);
 			}
 		} else {
 			$reporter = new SelectiveReporter(
-			SimpleTest::preferred('HtmlReporter'),
-			@$_GET['c'],
-			@$_GET['t']);
+					SimpleTest::preferred('HtmlReporter'),
+					@$_GET['c'],
+					@$_GET['t']);
 			if (@$_GET['skips'] == 'no' || @$_GET['show-skips'] == 'no') {
 				$reporter = new NoSkipsReporter($reporter);
 			}

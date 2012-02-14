@@ -53,7 +53,7 @@ class TestOfParametersExpectation extends UnitTestCase {
 
 	function testOtherExpectations() {
 		$expectation = new ParametersExpectation(
-		array(new PatternExpectation('/hello/i')));
+				array(new PatternExpectation('/hello/i')));
 		$this->assertFalse($expectation->test(array('Goodbye')));
 		$this->assertTrue($expectation->test(array('hello')));
 		$this->assertTrue($expectation->test(array('Hello')));
@@ -67,7 +67,7 @@ class TestOfParametersExpectation extends UnitTestCase {
 
 	function testLongList() {
 		$expectation = new ParametersExpectation(
-		array("0", 0, new AnythingExpectation(), false));
+				array("0", 0, new AnythingExpectation(), false));
 		$this->assertTrue($expectation->test(array("0", 0, 37, false)));
 		$this->assertFalse($expectation->test(array("0", 0, 37, true)));
 		$this->assertFalse($expectation->test(array("0", 0, 37)));
@@ -269,7 +269,7 @@ class TestOfMockReturns extends UnitTestCase {
 		$mock->returnsByValue(
 				"aMethod",
 				"aaa",
-		array(new PatternExpectation('/hello/i')));
+				array(new PatternExpectation('/hello/i')));
 		$this->assertIdentical($mock->aMethod('Hello'), 'aaa');
 		$this->assertNull($mock->aMethod('Goodbye'));
 	}
@@ -561,7 +561,7 @@ class TestOfMockExpectations extends UnitTestCase {
 
 	function testZeroArguments() {
 		$this->test->expectOnce('assert',
-		array(new MemberExpectation('expected', array()), array(), '*'));
+								array(new MemberExpectation('expected', array()), array(), '*'));
 		$mock = new MockDummyWithInjectedTestCase();
 		$mock->expect('aMethod', array());
 		$mock->aMethod();
@@ -570,7 +570,7 @@ class TestOfMockExpectations extends UnitTestCase {
 
 	function testExpectedArguments() {
 		$this->test->expectOnce('assert',
-		array(new MemberExpectation('expected', array(1, 2, 3)), array(1, 2, 3), '*'));
+								array(new MemberExpectation('expected', array(1, 2, 3)), array(1, 2, 3), '*'));
 		$mock = new MockDummyWithInjectedTestCase();
 		$mock->expect('aMethod', array(1, 2, 3));
 		$mock->aMethod(1, 2, 3);
@@ -579,7 +579,7 @@ class TestOfMockExpectations extends UnitTestCase {
 
 	function testFailedArguments() {
 		$this->test->expectOnce('assert',
-		array(new MemberExpectation('expected', array('this')), array('that'), '*'));
+								array(new MemberExpectation('expected', array('this')), array('that'), '*'));
 		$mock = new MockDummyWithInjectedTestCase();
 		$mock->expect('aMethod', array('this'));
 		$mock->aMethod('that');
@@ -588,11 +588,11 @@ class TestOfMockExpectations extends UnitTestCase {
 
 	function testWildcardsAreTranslatedToAnythingExpectations() {
 		$this->test->expectOnce('assert',
-		array(new MemberExpectation('expected',
-		array(new AnythingExpectation(),
-		123,
-		new AnythingExpectation())),
-		array(100, 123, 101), '*'));
+								array(new MemberExpectation('expected',
+															array(new AnythingExpectation(),
+																  123,
+																  new AnythingExpectation())),
+									  array(100, 123, 101), '*'));
 		$mock = new MockDummyWithInjectedTestCase($this);
 		$mock->expect("aMethod", array('*', 123, '*'));
 		$mock->aMethod(100, 123, 101);
@@ -601,9 +601,9 @@ class TestOfMockExpectations extends UnitTestCase {
 
 	function testSpecificPassingSequence() {
 		$this->test->expectAt(0, 'assert',
-		array(new MemberExpectation('expected', array(1, 2, 3)), array(1, 2, 3), '*'));
+							  array(new MemberExpectation('expected', array(1, 2, 3)), array(1, 2, 3), '*'));
 		$this->test->expectAt(1, 'assert',
-		array(new MemberExpectation('expected', array('Hello')), array('Hello'), '*'));
+							  array(new MemberExpectation('expected', array('Hello')), array('Hello'), '*'));
 		$mock = new MockDummyWithInjectedTestCase();
 		$mock->expectAt(1, 'aMethod', array(1, 2, 3));
 		$mock->expectAt(2, 'aMethod', array('Hello'));
@@ -620,7 +620,7 @@ class TestOfMockExpectations extends UnitTestCase {
 		$mock->expect("aMethod", "foo");
 		$mock->aMethod();
 		$mock->mock->atTestEnd('testSomething', $this->test);
-	}
+   }
 }
 
 class TestOfMockComparisons extends UnitTestCase {
@@ -875,24 +875,24 @@ class TestOfPHP5AbstractMethodMocking extends UnitTestCase {
 		');
 		Mock::generate('SimpleAbstractClassContainingAbstractMethods');
 		$this->assertTrue(
-		method_exists(
-		// Testing with class name alone does not work in PHP 5.0
-		new MockSimpleAbstractClassContainingAbstractMethods,
+			method_exists(
+				// Testing with class name alone does not work in PHP 5.0
+				new MockSimpleAbstractClassContainingAbstractMethods,
 				'anAbstract'
-				)
-				);
-				$this->assertTrue(
-				method_exists(
+			)
+		);
+		$this->assertTrue(
+			method_exists(
 				new MockSimpleAbstractClassContainingAbstractMethods,
 				'anAbstractWithParameter'
-				)
-				);
-				$this->assertTrue(
-				method_exists(
+			)
+		);
+		$this->assertTrue(
+			method_exists(
 				new MockSimpleAbstractClassContainingAbstractMethods,
 				'anAbstractWithMultipleParameters'
-				)
-				);
+			)
+		);
 	}
 
 	function testMethodsDefinedAsAbstractInParentShouldHaveFullSignature() {
@@ -913,42 +913,42 @@ class TestOfPHP5AbstractMethodMocking extends UnitTestCase {
 		');
 		Mock::generate('SimpleChildAbstractClassContainingAbstractMethods');
 		$this->assertTrue(
-		method_exists(
-		new MockSimpleChildAbstractClassContainingAbstractMethods,
+			method_exists(
+				new MockSimpleChildAbstractClassContainingAbstractMethods,
 				'anAbstract'
-				)
-				);
-				$this->assertTrue(
-				method_exists(
+			)
+		);
+		$this->assertTrue(
+			method_exists(
 				new MockSimpleChildAbstractClassContainingAbstractMethods,
 				'anAbstractWithParameter'
-				)
-				);
-				$this->assertTrue(
-				method_exists(
+			)
+		);
+		$this->assertTrue(
+			method_exists(
 				new MockSimpleChildAbstractClassContainingAbstractMethods,
 				'anAbstractWithMultipleParameters'
-				)
-				);
-				Mock::generate('EvenDeeperEmptyChildClass');
-				$this->assertTrue(
-				method_exists(
+			)
+		);
+		Mock::generate('EvenDeeperEmptyChildClass');
+		$this->assertTrue(
+			method_exists(
 				new MockEvenDeeperEmptyChildClass,
 				'anAbstract'
-				)
-				);
-				$this->assertTrue(
-				method_exists(
+			)
+		);
+		$this->assertTrue(
+			method_exists(
 				new MockEvenDeeperEmptyChildClass,
 				'anAbstractWithParameter'
-				)
-				);
-				$this->assertTrue(
-				method_exists(
+			)
+		);
+		$this->assertTrue(
+			method_exists(
 				new MockEvenDeeperEmptyChildClass,
 				'anAbstractWithMultipleParameters'
-				)
-				);
+			)
+		);
 	}
 }
 
@@ -963,11 +963,11 @@ class TestOfProtectedMethodPartialMocks extends UnitTestCase
 {
 	function testProtectedMethodExists() {
 		$this->assertTrue(
-		method_exists(
-		new TestDummyWithProtected,
+			method_exists(
+				new TestDummyWithProtected,
 				'aProtectedMethod'
-				)
-				);
+			)
+		);
 	}
 
 	function testProtectedMethodIsCalled() {

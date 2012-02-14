@@ -2,15 +2,12 @@ body {
 	padding-left: 3%;
 	padding-right: 3%;
 }
-
-h1,h2,h3 {
+h1, h2, h3 {
 	font-family: sans-serif;
 }
-
 h1 {
 	text-align: center;
 }
-
 pre {
 	font-family: "courier new", courier, typewriter, monospace;
 	font-size: 90%;
@@ -21,22 +18,18 @@ pre {
 	margin-left: 20px;
 	margin-right: 40px;
 }
-
-.code,.new_code,pre.new_code {
+.code, .new_code, pre.new_code {
 	font-family: "courier new", courier, typewriter, monospace;
 	font-weight: bold;
 }
-
 div.copyright {
 	font-size: 80%;
 	color: gray;
 }
-
 div.copyright a {
 	margin-top: 1em;
 	color: gray;
 }
-
 ul.api {
 	border: 2px outset;
 	border-color: gray;
@@ -45,7 +38,6 @@ ul.api {
 	margin-left: 5%;
 	margin-right: 5%;
 }
-
 ul.api li {
 	margin-top: 0.2em;
 	margin-bottom: 0.2em;
@@ -53,7 +45,6 @@ ul.api li {
 	text-indent: -3em;
 	padding-left: 1em;
 }
-
 div.demo {
 	border: 4px ridge;
 	border-color: gray;
@@ -63,25 +54,20 @@ div.demo {
 	margin-right: 40px;
 	background-color: white;
 }
-
 div.demo span.fail {
 	color: red;
 }
-
 div.demo span.pass {
 	color: green;
 }
-
 div.demo h1 {
 	font-size: 12pt;
 	text-align: left;
 	font-weight: bold;
 }
-
 div.menu {
 	text-align: center;
 }
-
 table {
 	border: 2px outset;
 	border-color: gray;
@@ -90,15 +76,12 @@ table {
 	margin-left: 5%;
 	margin-right: 5%;
 }
-
 td {
 	font-size: 90%;
 }
-
 .shell {
 	color: white;
 }
-
 pre.shell {
 	border: 4px ridge;
 	border-color: gray;
@@ -110,7 +93,6 @@ pre.shell {
 	color: #99ff99;
 	font-size: 90%;
 }
-
 pre.file {
 	color: black;
 	border: 1px solid;
@@ -122,7 +104,6 @@ pre.file {
 	background-color: white;
 	font-size: 90%;
 }
-
 form.demo {
 	background-color: lightgray;
 	border: 4px outset;
@@ -130,12 +111,10 @@ form.demo {
 	padding: 10px;
 	margin-right: 40%;
 }
-
-dl,dd {
-	margin: 10px;
-	margin-left: 30px;
+dl, dd {
+	margin:  10px;
+	margin-left:  30px;
 }
-
 em {
 	font-weight: bold;
 	font-family: "courier new", courier, typewriter, monospace;

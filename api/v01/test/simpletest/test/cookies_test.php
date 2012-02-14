@@ -20,7 +20,7 @@ class TestOfCookie extends UnitTestCase {
 				"value",
 				"/path",
 				"Mon, 18 Nov 2002 15:50:29 GMT",
-		true);
+				true);
 		$this->assertEqual($cookie->getName(), "name");
 		$this->assertEqual($cookie->getValue(), "value");
 		$this->assertEqual($cookie->getPath(), "/path/");
@@ -116,20 +116,20 @@ class TestOfCookieJar extends UnitTestCase {
 		$jar->setCookie('b', 'B', 'another-host.com');
 		$jar->setCookie('c', 'C');
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('my-host.com')),
-		array('a=A', 'c=C'));
+				$jar->selectAsPairs(new SimpleUrl('my-host.com')),
+				array('a=A', 'c=C'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('another-host.com')),
-		array('b=B', 'c=C'));
+				$jar->selectAsPairs(new SimpleUrl('another-host.com')),
+				array('b=B', 'c=C'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('www.another-host.com')),
-		array('b=B', 'c=C'));
+				$jar->selectAsPairs(new SimpleUrl('www.another-host.com')),
+				array('b=B', 'c=C'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('new-host.org')),
-		array('c=C'));
+				$jar->selectAsPairs(new SimpleUrl('new-host.org')),
+				array('c=C'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('/')),
-		array('a=A', 'b=B', 'c=C'));
+				$jar->selectAsPairs(new SimpleUrl('/')),
+				array('a=A', 'b=B', 'c=C'));
 	}
 
 	function testPathFilter() {
@@ -159,20 +159,20 @@ class TestOfCookieJar extends UnitTestCase {
 		$jar->setCookie('a', 'abc', false, '/');
 		$jar->setCookie('a', '123', false, '/path/here/');
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('/')),
-		array('a=abc'));
+				$jar->selectAsPairs(new SimpleUrl('/')),
+				array('a=abc'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('my-host.com/')),
-		array('a=abc'));
+				$jar->selectAsPairs(new SimpleUrl('my-host.com/')),
+				array('a=abc'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('my-host.com/path/')),
-		array('a=abc'));
+				$jar->selectAsPairs(new SimpleUrl('my-host.com/path/')),
+				array('a=abc'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('my-host.com/path/here')),
-		array('a=abc', 'a=123'));
+				$jar->selectAsPairs(new SimpleUrl('my-host.com/path/here')),
+				array('a=abc', 'a=123'));
 		$this->assertEqual(
-		$jar->selectAsPairs(new SimpleUrl('my-host.com/path/here/there')),
-		array('a=abc', 'a=123'));
+				$jar->selectAsPairs(new SimpleUrl('my-host.com/path/here/there')),
+				array('a=abc', 'a=123'));
 	}
 
 	function testOverwrite() {

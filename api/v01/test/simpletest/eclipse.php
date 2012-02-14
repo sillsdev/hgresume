@@ -133,12 +133,12 @@ class EclipseReporter extends SimpleScorer {
 			$this->error = true;
 			$message = 'Unexpected exception of type[' . get_class($exception) .
 					'] with message [' . $exception->getMessage() . '] in [' .
-			$exception->getFile() .' line '. $exception->getLine() . ']';
+					$exception->getFile() .' line '. $exception->getLine() . ']';
 			$this->message = $this->escapeVal($message);
 			$this->listener->write(
 					'{status:"error",message:"' . $this->message . '",group:"' .
-			$this->group . '",case:"' . $this->case . '",method:"' . $this->method
-			. '"}');
+					$this->group . '",case:"' . $this->case . '",method:"' . $this->method
+					. '"}');
 		}
 	}
 
@@ -184,8 +184,8 @@ class EclipseReporter extends SimpleScorer {
 		} else {
 			$this->listener->write(
 						'{status:"pass",message:"' . $this->message . '",group:"' .
-			$this->group . '",case:"' . $this->case . '",method:"' .
-			$this->method . '"}');
+						$this->group . '",case:"' . $this->case . '",method:"' .
+						$this->method . '"}');
 		}
 	}
 
@@ -262,7 +262,7 @@ class EclipseReporter extends SimpleScorer {
 			}
 		}
 		$this->listener->write('{status:"coverage",message:"' .
-		EclipseReporter::escapeVal($cc) . '"}');
+								EclipseReporter::escapeVal($cc) . '"}');
 	}
 }
 
@@ -300,7 +300,7 @@ class EclipseInvoker extends SimpleInvokerDecorator{
 		ob_end_clean();
 		if ($output !== ""){
 			$result = $this->listener->write('{status:"info",message:"' .
-			EclipseReporter::escapeVal($output) . '"}');
+											  EclipseReporter::escapeVal($output) . '"}');
 		}
 	}
 }

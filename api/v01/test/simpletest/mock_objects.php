@@ -110,7 +110,7 @@ class ParametersExpectation extends SimpleExpectation {
 			$comparison = $this->coerceToExpectation($expected[$i]);
 			if (! $comparison->test($parameters[$i])) {
 				$messages[] = "parameter " . ($i + 1) . " with [" .
-				$comparison->overlayMessage($parameters[$i], $this->getDumper()) . "]";
+						$comparison->overlayMessage($parameters[$i], $this->getDumper()) . "]";
 			}
 		}
 		return "Parameter expectation differs at " . implode(" and ", $messages);
@@ -433,7 +433,7 @@ class SimpleCallSchedule {
 		$args = $this->replaceWildcards($args);
 		$message .= Mock::getExpectationLine();
 		$this->expected_args[strtolower($method)] =
-		new ParametersExpectation($args, $message);
+				new ParametersExpectation($args, $message);
 
 	}
 
@@ -688,7 +688,7 @@ class SimpleMock {
 		if (! is_array($args)) {
 			trigger_error(
 				"Cannot $task as \$args parameter is not an array",
-			E_USER_ERROR);
+				E_USER_ERROR);
 		}
 	}
 
@@ -702,485 +702,485 @@ class SimpleMock {
 		if ($this->is_strict && ! method_exists($this, $method)) {
 			trigger_error(
 					"Cannot $task as no ${method}() in class " . get_class($this),
-			E_USER_ERROR);
-	}
-}
-
-/**
- *    Replaces wildcard matches with wildcard
- *    expectations in the argument list.
- *    @param array $args      Raw argument list.
- *    @return array           Argument list with
- *                            expectations.
- */
-function replaceWildcards($args) {
-	if ($args === false) {
-		return false;
-	}
-	for ($i = 0; $i < count($args); $i++) {
-		if ($args[$i] === $this->wildcard) {
-			$args[$i] = new AnythingExpectation();
+					E_USER_ERROR);
 		}
 	}
-	return $args;
-}
 
-/**
- *    Adds one to the call count of a method.
- *    @param string $method        Method called.
- *    @param array $args           Arguments as an array.
- */
-protected function addCall($method, $args) {
-	if (! isset($this->call_counts[$method])) {
-		$this->call_counts[$method] = 0;
+	/**
+	 *    Replaces wildcard matches with wildcard
+	 *    expectations in the argument list.
+	 *    @param array $args      Raw argument list.
+	 *    @return array           Argument list with
+	 *                            expectations.
+	 */
+	function replaceWildcards($args) {
+		if ($args === false) {
+			return false;
+		}
+		for ($i = 0; $i < count($args); $i++) {
+			if ($args[$i] === $this->wildcard) {
+				$args[$i] = new AnythingExpectation();
+			}
+		}
+		return $args;
 	}
-	$this->call_counts[$method]++;
-}
 
-/**
- *    Fetches the call count of a method so far.
- *    @param string $method        Method name called.
- *    @return integer              Number of calls so far.
- */
-function getCallCount($method) {
-	$this->dieOnNoMethod($method, "get call count");
-	$method = strtolower($method);
-	if (! isset($this->call_counts[$method])) {
-		return 0;
+	/**
+	 *    Adds one to the call count of a method.
+	 *    @param string $method        Method called.
+	 *    @param array $args           Arguments as an array.
+	 */
+	protected function addCall($method, $args) {
+		if (! isset($this->call_counts[$method])) {
+			$this->call_counts[$method] = 0;
+		}
+		$this->call_counts[$method]++;
 	}
-	return $this->call_counts[$method];
-}
 
-/**
- *    Sets a return for a parameter list that will
- *    be passed on by all calls to this method that match.
- *    @param string $method       Method name.
- *    @param mixed $value         Result of call by value/handle.
- *    @param array $args          List of parameters to match
- *                                including wildcards.
- */
-function returns($method, $value, $args = false) {
-	$this->dieOnNoMethod($method, "set return");
-	$this->actions->register($method, $args, new SimpleReturn($value));
-}
-
-/**
- *    Sets a return for a parameter list that will
- *    be passed only when the required call count
- *    is reached.
- *    @param integer $timing   Number of calls in the future
- *                             to which the result applies. If
- *                             not set then all calls will return
- *                             the value.
- *    @param string $method    Method name.
- *    @param mixed $value      Result of call passed.
- *    @param array $args       List of parameters to match
- *                             including wildcards.
- */
-function returnsAt($timing, $method, $value, $args = false) {
-	$this->dieOnNoMethod($method, "set return value sequence");
-	$this->actions->registerAt($timing, $method, $args, new SimpleReturn($value));
-}
-
-/**
- *    Sets a return for a parameter list that will
- *    be passed by value for all calls to this method.
- *    @param string $method       Method name.
- *    @param mixed $value         Result of call passed by value.
- *    @param array $args          List of parameters to match
- *                                including wildcards.
- */
-function returnsByValue($method, $value, $args = false) {
-	$this->dieOnNoMethod($method, "set return value");
-	$this->actions->register($method, $args, new SimpleByValue($value));
-}
-
-/** @deprecated */
-function setReturnValue($method, $value, $args = false) {
-	$this->returnsByValue($method, $value, $args);
-}
-
-/**
- *    Sets a return for a parameter list that will
- *    be passed by value only when the required call count
- *    is reached.
- *    @param integer $timing   Number of calls in the future
- *                             to which the result applies. If
- *                             not set then all calls will return
- *                             the value.
- *    @param string $method    Method name.
- *    @param mixed $value      Result of call passed by value.
- *    @param array $args       List of parameters to match
- *                             including wildcards.
- */
-function returnsByValueAt($timing, $method, $value, $args = false) {
-	$this->dieOnNoMethod($method, "set return value sequence");
-	$this->actions->registerAt($timing, $method, $args, new SimpleByValue($value));
-}
-
-/** @deprecated */
-function setReturnValueAt($timing, $method, $value, $args = false) {
-	$this->returnsByValueAt($timing, $method, $value, $args);
-}
-
-/**
- *    Sets a return for a parameter list that will
- *    be passed by reference for all calls.
- *    @param string $method       Method name.
- *    @param mixed $reference     Result of the call will be this object.
- *    @param array $args          List of parameters to match
- *                                including wildcards.
- */
-function returnsByReference($method, &$reference, $args = false) {
-	$this->dieOnNoMethod($method, "set return reference");
-	$this->actions->register($method, $args, new SimpleByReference($reference));
-}
-
-/** @deprecated */
-function setReturnReference($method, &$reference, $args = false) {
-	$this->returnsByReference($method, $reference, $args);
-}
-
-/**
- *    Sets a return for a parameter list that will
- *    be passed by value only when the required call count
- *    is reached.
- *    @param integer $timing    Number of calls in the future
- *                              to which the result applies. If
- *                              not set then all calls will return
- *                              the value.
- *    @param string $method     Method name.
- *    @param mixed $reference   Result of the call will be this object.
- *    @param array $args        List of parameters to match
- *                              including wildcards.
- */
-function returnsByReferenceAt($timing, $method, &$reference, $args = false) {
-	$this->dieOnNoMethod($method, "set return reference sequence");
-	$this->actions->registerAt($timing, $method, $args, new SimpleByReference($reference));
-}
-
-/** @deprecated */
-function setReturnReferenceAt($timing, $method, &$reference, $args = false) {
-	$this->returnsByReferenceAt($timing, $method, $reference, $args);
-}
-
-/**
- *    Sets up an expected call with a set of
- *    expected parameters in that call. All
- *    calls will be compared to these expectations
- *    regardless of when the call is made.
- *    @param string $method        Method call to test.
- *    @param array $args           Expected parameters for the call
- *                                 including wildcards.
- *    @param string $message       Overridden message.
- */
-function expect($method, $args, $message = '%s') {
-	$this->dieOnNoMethod($method, 'set expected arguments');
-	$this->checkArgumentsIsArray($args, 'set expected arguments');
-	$this->expectations->expectArguments($method, $args, $message);
-	$args = $this->replaceWildcards($args);
-	$message .= Mock::getExpectationLine();
-	$this->expected_args[strtolower($method)] =
-	new ParametersExpectation($args, $message);
-}
-
-/**
- *    Sets up an expected call with a set of
- *    expected parameters in that call. The
- *    expected call count will be adjusted if it
- *    is set too low to reach this call.
- *    @param integer $timing    Number of calls in the future at
- *                              which to test. Next call is 0.
- *    @param string $method     Method call to test.
- *    @param array $args        Expected parameters for the call
- *                              including wildcards.
- *    @param string $message    Overridden message.
- */
-function expectAt($timing, $method, $args, $message = '%s') {
-	$this->dieOnNoMethod($method, 'set expected arguments at time');
-	$this->checkArgumentsIsArray($args, 'set expected arguments at time');
-	$args = $this->replaceWildcards($args);
-	if (! isset($this->expected_args_at[$timing])) {
-		$this->expected_args_at[$timing] = array();
+	/**
+	 *    Fetches the call count of a method so far.
+	 *    @param string $method        Method name called.
+	 *    @return integer              Number of calls so far.
+	 */
+	function getCallCount($method) {
+		$this->dieOnNoMethod($method, "get call count");
+		$method = strtolower($method);
+		if (! isset($this->call_counts[$method])) {
+			return 0;
+		}
+		return $this->call_counts[$method];
 	}
-	$method = strtolower($method);
-	$message .= Mock::getExpectationLine();
-	$this->expected_args_at[$timing][$method] =
-	new ParametersExpectation($args, $message);
-}
 
-/**
- *    Sets an expectation for the number of times
- *    a method will be called. The tally method
- *    is used to check this.
- *    @param string $method        Method call to test.
- *    @param integer $count        Number of times it should
- *                                 have been called at tally.
- *    @param string $message       Overridden message.
- */
-function expectCallCount($method, $count, $message = '%s') {
-	$this->dieOnNoMethod($method, 'set expected call count');
-	$message .= Mock::getExpectationLine();
-	$this->expected_counts[strtolower($method)] =
-	new CallCountExpectation($method, $count, $message);
-}
-
-/**
- *    Sets the number of times a method may be called
- *    before a test failure is triggered.
- *    @param string $method        Method call to test.
- *    @param integer $count        Most number of times it should
- *                                 have been called.
- *    @param string $message       Overridden message.
- */
-function expectMaximumCallCount($method, $count, $message = '%s') {
-	$this->dieOnNoMethod($method, 'set maximum call count');
-	$message .= Mock::getExpectationLine();
-	$this->max_counts[strtolower($method)] =
-	new MaximumCallCountExpectation($method, $count, $message);
-}
-
-/**
- *    Sets the number of times to call a method to prevent
- *    a failure on the tally.
- *    @param string $method      Method call to test.
- *    @param integer $count      Least number of times it should
- *                               have been called.
- *    @param string $message     Overridden message.
- */
-function expectMinimumCallCount($method, $count, $message = '%s') {
-	$this->dieOnNoMethod($method, 'set minimum call count');
-	$message .= Mock::getExpectationLine();
-	$this->expected_counts[strtolower($method)] =
-	new MinimumCallCountExpectation($method, $count, $message);
-}
-
-/**
- *    Convenience method for barring a method
- *    call.
- *    @param string $method        Method call to ban.
- *    @param string $message       Overridden message.
- */
-function expectNever($method, $message = '%s') {
-	$this->expectMaximumCallCount($method, 0, $message);
-}
-
-/**
- *    Convenience method for a single method
- *    call.
- *    @param string $method     Method call to track.
- *    @param array $args        Expected argument list or
- *                              false for any arguments.
- *    @param string $message    Overridden message.
- */
-function expectOnce($method, $args = false, $message = '%s') {
-	$this->expectCallCount($method, 1, $message);
-	if ($args !== false) {
-		$this->expect($method, $args, $message);
+	/**
+	 *    Sets a return for a parameter list that will
+	 *    be passed on by all calls to this method that match.
+	 *    @param string $method       Method name.
+	 *    @param mixed $value         Result of call by value/handle.
+	 *    @param array $args          List of parameters to match
+	 *                                including wildcards.
+	 */
+	function returns($method, $value, $args = false) {
+		$this->dieOnNoMethod($method, "set return");
+		$this->actions->register($method, $args, new SimpleReturn($value));
 	}
-}
 
-/**
- *    Convenience method for requiring a method
- *    call.
- *    @param string $method       Method call to track.
- *    @param array $args          Expected argument list or
- *                                false for any arguments.
- *    @param string $message      Overridden message.
- */
-function expectAtLeastOnce($method, $args = false, $message = '%s') {
-	$this->expectMinimumCallCount($method, 1, $message);
-	if ($args !== false) {
-		$this->expect($method, $args, $message);
+	/**
+	 *    Sets a return for a parameter list that will
+	 *    be passed only when the required call count
+	 *    is reached.
+	 *    @param integer $timing   Number of calls in the future
+	 *                             to which the result applies. If
+	 *                             not set then all calls will return
+	 *                             the value.
+	 *    @param string $method    Method name.
+	 *    @param mixed $value      Result of call passed.
+	 *    @param array $args       List of parameters to match
+	 *                             including wildcards.
+	 */
+	function returnsAt($timing, $method, $value, $args = false) {
+		$this->dieOnNoMethod($method, "set return value sequence");
+		$this->actions->registerAt($timing, $method, $args, new SimpleReturn($value));
 	}
-}
 
-/**
- *    Sets up a trigger to throw an exception upon the
- *    method call.
- *    @param string $method     Method name to throw on.
- *    @param object $exception  Exception object to throw.
- *                              If not given then a simple
- *                              Exception object is thrown.
- *    @param array $args        Optional argument list filter.
- *                              If given then the exception
- *                              will only be thrown if the
- *                              method call matches the arguments.
- */
-function throwOn($method, $exception = false, $args = false) {
-	$this->dieOnNoMethod($method, "throw on");
-	$this->actions->register($method, $args,
-	new SimpleThrower($exception ? $exception : new Exception()));
-}
-
-/**
- *    Sets up a trigger to throw an exception upon the
- *    method call.
- *    @param integer $timing    When to throw the exception. A
- *                              value of 0 throws immediately.
- *                              A value of 1 actually allows one call
- *                              to this method before throwing. 2
- *                              will allow two calls before throwing
- *                              and so on.
- *    @param string $method     Method name to throw on.
- *    @param object $exception  Exception object to throw.
- *                              If not given then a simple
- *                              Exception object is thrown.
- *    @param array $args        Optional argument list filter.
- *                              If given then the exception
- *                              will only be thrown if the
- *                              method call matches the arguments.
- */
-function throwAt($timing, $method, $exception = false, $args = false) {
-	$this->dieOnNoMethod($method, "throw at");
-	$this->actions->registerAt($timing, $method, $args,
-	new SimpleThrower($exception ? $exception : new Exception()));
-}
-
-/**
- *    Sets up a trigger to throw an error upon the
- *    method call.
- *    @param string $method     Method name to throw on.
- *    @param object $error      Error message to trigger.
- *    @param array $args        Optional argument list filter.
- *                              If given then the exception
- *                              will only be thrown if the
- *                              method call matches the arguments.
- *    @param integer $severity  The PHP severity level. Defaults
- *                              to E_USER_ERROR.
- */
-function errorOn($method, $error = 'A mock error', $args = false, $severity = E_USER_ERROR) {
-	$this->dieOnNoMethod($method, "error on");
-	$this->actions->register($method, $args, new SimpleErrorThrower($error, $severity));
-}
-
-/**
- *    Sets up a trigger to throw an error upon a specific
- *    method call.
- *    @param integer $timing    When to throw the exception. A
- *                              value of 0 throws immediately.
- *                              A value of 1 actually allows one call
- *                              to this method before throwing. 2
- *                              will allow two calls before throwing
- *                              and so on.
- *    @param string $method     Method name to throw on.
- *    @param object $error      Error message to trigger.
- *    @param array $args        Optional argument list filter.
- *                              If given then the exception
- *                              will only be thrown if the
- *                              method call matches the arguments.
- *    @param integer $severity  The PHP severity level. Defaults
- *                              to E_USER_ERROR.
- */
-function errorAt($timing, $method, $error = 'A mock error', $args = false, $severity = E_USER_ERROR) {
-	$this->dieOnNoMethod($method, "error at");
-	$this->actions->registerAt($timing, $method, $args, new SimpleErrorThrower($error, $severity));
-}
-
-/**
- *    Receives event from unit test that the current
- *    test method has finished. Totals up the call
- *    counts and triggers a test assertion if a test
- *    is present for expected call counts.
- *    @param string $test_method      Current method name.
- *    @param SimpleTestCase $test     Test to send message to.
- */
-function atTestEnd($test_method, &$test) {
-	foreach ($this->expected_counts as $method => $expectation) {
-		$test->assert($expectation, $this->getCallCount($method));
+	/**
+	 *    Sets a return for a parameter list that will
+	 *    be passed by value for all calls to this method.
+	 *    @param string $method       Method name.
+	 *    @param mixed $value         Result of call passed by value.
+	 *    @param array $args          List of parameters to match
+	 *                                including wildcards.
+	 */
+	function returnsByValue($method, $value, $args = false) {
+		$this->dieOnNoMethod($method, "set return value");
+		$this->actions->register($method, $args, new SimpleByValue($value));
 	}
-	foreach ($this->max_counts as $method => $expectation) {
-		if ($expectation->test($this->getCallCount($method))) {
+
+	/** @deprecated */
+	function setReturnValue($method, $value, $args = false) {
+		$this->returnsByValue($method, $value, $args);
+	}
+
+	/**
+	 *    Sets a return for a parameter list that will
+	 *    be passed by value only when the required call count
+	 *    is reached.
+	 *    @param integer $timing   Number of calls in the future
+	 *                             to which the result applies. If
+	 *                             not set then all calls will return
+	 *                             the value.
+	 *    @param string $method    Method name.
+	 *    @param mixed $value      Result of call passed by value.
+	 *    @param array $args       List of parameters to match
+	 *                             including wildcards.
+	 */
+	function returnsByValueAt($timing, $method, $value, $args = false) {
+		$this->dieOnNoMethod($method, "set return value sequence");
+		$this->actions->registerAt($timing, $method, $args, new SimpleByValue($value));
+	}
+
+	/** @deprecated */
+	function setReturnValueAt($timing, $method, $value, $args = false) {
+		$this->returnsByValueAt($timing, $method, $value, $args);
+	}
+
+	/**
+	 *    Sets a return for a parameter list that will
+	 *    be passed by reference for all calls.
+	 *    @param string $method       Method name.
+	 *    @param mixed $reference     Result of the call will be this object.
+	 *    @param array $args          List of parameters to match
+	 *                                including wildcards.
+	 */
+	function returnsByReference($method, &$reference, $args = false) {
+		$this->dieOnNoMethod($method, "set return reference");
+		$this->actions->register($method, $args, new SimpleByReference($reference));
+	}
+
+	/** @deprecated */
+	function setReturnReference($method, &$reference, $args = false) {
+		$this->returnsByReference($method, $reference, $args);
+	}
+
+	/**
+	 *    Sets a return for a parameter list that will
+	 *    be passed by value only when the required call count
+	 *    is reached.
+	 *    @param integer $timing    Number of calls in the future
+	 *                              to which the result applies. If
+	 *                              not set then all calls will return
+	 *                              the value.
+	 *    @param string $method     Method name.
+	 *    @param mixed $reference   Result of the call will be this object.
+	 *    @param array $args        List of parameters to match
+	 *                              including wildcards.
+	 */
+	function returnsByReferenceAt($timing, $method, &$reference, $args = false) {
+		$this->dieOnNoMethod($method, "set return reference sequence");
+		$this->actions->registerAt($timing, $method, $args, new SimpleByReference($reference));
+	}
+
+	/** @deprecated */
+	function setReturnReferenceAt($timing, $method, &$reference, $args = false) {
+		$this->returnsByReferenceAt($timing, $method, $reference, $args);
+	}
+
+	/**
+	 *    Sets up an expected call with a set of
+	 *    expected parameters in that call. All
+	 *    calls will be compared to these expectations
+	 *    regardless of when the call is made.
+	 *    @param string $method        Method call to test.
+	 *    @param array $args           Expected parameters for the call
+	 *                                 including wildcards.
+	 *    @param string $message       Overridden message.
+	 */
+	function expect($method, $args, $message = '%s') {
+		$this->dieOnNoMethod($method, 'set expected arguments');
+		$this->checkArgumentsIsArray($args, 'set expected arguments');
+		$this->expectations->expectArguments($method, $args, $message);
+		$args = $this->replaceWildcards($args);
+		$message .= Mock::getExpectationLine();
+		$this->expected_args[strtolower($method)] =
+				new ParametersExpectation($args, $message);
+	}
+
+	/**
+	 *    Sets up an expected call with a set of
+	 *    expected parameters in that call. The
+	 *    expected call count will be adjusted if it
+	 *    is set too low to reach this call.
+	 *    @param integer $timing    Number of calls in the future at
+	 *                              which to test. Next call is 0.
+	 *    @param string $method     Method call to test.
+	 *    @param array $args        Expected parameters for the call
+	 *                              including wildcards.
+	 *    @param string $message    Overridden message.
+	 */
+	function expectAt($timing, $method, $args, $message = '%s') {
+		$this->dieOnNoMethod($method, 'set expected arguments at time');
+		$this->checkArgumentsIsArray($args, 'set expected arguments at time');
+		$args = $this->replaceWildcards($args);
+		if (! isset($this->expected_args_at[$timing])) {
+			$this->expected_args_at[$timing] = array();
+		}
+		$method = strtolower($method);
+		$message .= Mock::getExpectationLine();
+		$this->expected_args_at[$timing][$method] =
+				new ParametersExpectation($args, $message);
+	}
+
+	/**
+	 *    Sets an expectation for the number of times
+	 *    a method will be called. The tally method
+	 *    is used to check this.
+	 *    @param string $method        Method call to test.
+	 *    @param integer $count        Number of times it should
+	 *                                 have been called at tally.
+	 *    @param string $message       Overridden message.
+	 */
+	function expectCallCount($method, $count, $message = '%s') {
+		$this->dieOnNoMethod($method, 'set expected call count');
+		$message .= Mock::getExpectationLine();
+		$this->expected_counts[strtolower($method)] =
+				new CallCountExpectation($method, $count, $message);
+	}
+
+	/**
+	 *    Sets the number of times a method may be called
+	 *    before a test failure is triggered.
+	 *    @param string $method        Method call to test.
+	 *    @param integer $count        Most number of times it should
+	 *                                 have been called.
+	 *    @param string $message       Overridden message.
+	 */
+	function expectMaximumCallCount($method, $count, $message = '%s') {
+		$this->dieOnNoMethod($method, 'set maximum call count');
+		$message .= Mock::getExpectationLine();
+		$this->max_counts[strtolower($method)] =
+				new MaximumCallCountExpectation($method, $count, $message);
+	}
+
+	/**
+	 *    Sets the number of times to call a method to prevent
+	 *    a failure on the tally.
+	 *    @param string $method      Method call to test.
+	 *    @param integer $count      Least number of times it should
+	 *                               have been called.
+	 *    @param string $message     Overridden message.
+	 */
+	function expectMinimumCallCount($method, $count, $message = '%s') {
+		$this->dieOnNoMethod($method, 'set minimum call count');
+		$message .= Mock::getExpectationLine();
+		$this->expected_counts[strtolower($method)] =
+				new MinimumCallCountExpectation($method, $count, $message);
+	}
+
+	/**
+	 *    Convenience method for barring a method
+	 *    call.
+	 *    @param string $method        Method call to ban.
+	 *    @param string $message       Overridden message.
+	 */
+	function expectNever($method, $message = '%s') {
+		$this->expectMaximumCallCount($method, 0, $message);
+	}
+
+	/**
+	 *    Convenience method for a single method
+	 *    call.
+	 *    @param string $method     Method call to track.
+	 *    @param array $args        Expected argument list or
+	 *                              false for any arguments.
+	 *    @param string $message    Overridden message.
+	 */
+	function expectOnce($method, $args = false, $message = '%s') {
+		$this->expectCallCount($method, 1, $message);
+		if ($args !== false) {
+			$this->expect($method, $args, $message);
+		}
+	}
+
+	/**
+	 *    Convenience method for requiring a method
+	 *    call.
+	 *    @param string $method       Method call to track.
+	 *    @param array $args          Expected argument list or
+	 *                                false for any arguments.
+	 *    @param string $message      Overridden message.
+	 */
+	function expectAtLeastOnce($method, $args = false, $message = '%s') {
+		$this->expectMinimumCallCount($method, 1, $message);
+		if ($args !== false) {
+			$this->expect($method, $args, $message);
+		}
+	}
+
+	/**
+	 *    Sets up a trigger to throw an exception upon the
+	 *    method call.
+	 *    @param string $method     Method name to throw on.
+	 *    @param object $exception  Exception object to throw.
+	 *                              If not given then a simple
+	 *                              Exception object is thrown.
+	 *    @param array $args        Optional argument list filter.
+	 *                              If given then the exception
+	 *                              will only be thrown if the
+	 *                              method call matches the arguments.
+	 */
+	function throwOn($method, $exception = false, $args = false) {
+		$this->dieOnNoMethod($method, "throw on");
+		$this->actions->register($method, $args,
+				new SimpleThrower($exception ? $exception : new Exception()));
+	}
+
+	/**
+	 *    Sets up a trigger to throw an exception upon the
+	 *    method call.
+	 *    @param integer $timing    When to throw the exception. A
+	 *                              value of 0 throws immediately.
+	 *                              A value of 1 actually allows one call
+	 *                              to this method before throwing. 2
+	 *                              will allow two calls before throwing
+	 *                              and so on.
+	 *    @param string $method     Method name to throw on.
+	 *    @param object $exception  Exception object to throw.
+	 *                              If not given then a simple
+	 *                              Exception object is thrown.
+	 *    @param array $args        Optional argument list filter.
+	 *                              If given then the exception
+	 *                              will only be thrown if the
+	 *                              method call matches the arguments.
+	 */
+	function throwAt($timing, $method, $exception = false, $args = false) {
+		$this->dieOnNoMethod($method, "throw at");
+		$this->actions->registerAt($timing, $method, $args,
+				new SimpleThrower($exception ? $exception : new Exception()));
+	}
+
+	/**
+	 *    Sets up a trigger to throw an error upon the
+	 *    method call.
+	 *    @param string $method     Method name to throw on.
+	 *    @param object $error      Error message to trigger.
+	 *    @param array $args        Optional argument list filter.
+	 *                              If given then the exception
+	 *                              will only be thrown if the
+	 *                              method call matches the arguments.
+	 *    @param integer $severity  The PHP severity level. Defaults
+	 *                              to E_USER_ERROR.
+	 */
+	function errorOn($method, $error = 'A mock error', $args = false, $severity = E_USER_ERROR) {
+		$this->dieOnNoMethod($method, "error on");
+		$this->actions->register($method, $args, new SimpleErrorThrower($error, $severity));
+	}
+
+	/**
+	 *    Sets up a trigger to throw an error upon a specific
+	 *    method call.
+	 *    @param integer $timing    When to throw the exception. A
+	 *                              value of 0 throws immediately.
+	 *                              A value of 1 actually allows one call
+	 *                              to this method before throwing. 2
+	 *                              will allow two calls before throwing
+	 *                              and so on.
+	 *    @param string $method     Method name to throw on.
+	 *    @param object $error      Error message to trigger.
+	 *    @param array $args        Optional argument list filter.
+	 *                              If given then the exception
+	 *                              will only be thrown if the
+	 *                              method call matches the arguments.
+	 *    @param integer $severity  The PHP severity level. Defaults
+	 *                              to E_USER_ERROR.
+	 */
+	function errorAt($timing, $method, $error = 'A mock error', $args = false, $severity = E_USER_ERROR) {
+		$this->dieOnNoMethod($method, "error at");
+		$this->actions->registerAt($timing, $method, $args, new SimpleErrorThrower($error, $severity));
+	}
+
+	/**
+	 *    Receives event from unit test that the current
+	 *    test method has finished. Totals up the call
+	 *    counts and triggers a test assertion if a test
+	 *    is present for expected call counts.
+	 *    @param string $test_method      Current method name.
+	 *    @param SimpleTestCase $test     Test to send message to.
+	 */
+	function atTestEnd($test_method, &$test) {
+		foreach ($this->expected_counts as $method => $expectation) {
 			$test->assert($expectation, $this->getCallCount($method));
 		}
-	}
-}
-
-/**
- *    Returns the expected value for the method name
- *    and checks expectations. Will generate any
- *    test assertions as a result of expectations
- *    if there is a test present.
- *    @param string $method       Name of method to simulate.
- *    @param array $args          Arguments as an array.
- *    @return mixed               Stored return.
- */
-function &invoke($method, $args) {
-	$method = strtolower($method);
-	$step = $this->getCallCount($method);
-	$this->addCall($method, $args);
-	$this->checkExpectations($method, $args, $step);
-	$was = $this->disableEStrict();
-	try {
-		$result = &$this->emulateCall($method, $args, $step);
-	} catch (Exception $e) {
-		$this->restoreEStrict($was);
-		throw $e;
-	}
-	$this->restoreEStrict($was);
-	return $result;
-}
-
-/**
- *    Finds the return value matching the incoming
- *    arguments. If there is no matching value found
- *    then an error is triggered.
- *    @param string $method      Method name.
- *    @param array $args         Calling arguments.
- *    @param integer $step       Current position in the
- *                               call history.
- *    @return mixed              Stored return or other action.
- */
-protected function &emulateCall($method, $args, $step) {
-	return $this->actions->respond($step, $method, $args);
-}
-
-/**
- *    Tests the arguments against expectations.
- *    @param string $method        Method to check.
- *    @param array $args           Argument list to match.
- *    @param integer $timing       The position of this call
- *                                 in the call history.
- */
-protected function checkExpectations($method, $args, $timing) {
-	$test = $this->getCurrentTestCase();
-	if (isset($this->max_counts[$method])) {
-		if (! $this->max_counts[$method]->test($timing + 1)) {
-			$test->assert($this->max_counts[$method], $timing + 1);
+		foreach ($this->max_counts as $method => $expectation) {
+			if ($expectation->test($this->getCallCount($method))) {
+				$test->assert($expectation, $this->getCallCount($method));
+			}
 		}
 	}
-	if (isset($this->expected_args_at[$timing][$method])) {
-		$test->assert(
-		$this->expected_args_at[$timing][$method],
-		$args,
-					"Mock method [$method] at [$timing] -> %s");
-	} elseif (isset($this->expected_args[$method])) {
-		$test->assert(
-		$this->expected_args[$method],
-		$args,
-					"Mock method [$method] -> %s");
+
+	/**
+	 *    Returns the expected value for the method name
+	 *    and checks expectations. Will generate any
+	 *    test assertions as a result of expectations
+	 *    if there is a test present.
+	 *    @param string $method       Name of method to simulate.
+	 *    @param array $args          Arguments as an array.
+	 *    @return mixed               Stored return.
+	 */
+	function &invoke($method, $args) {
+		$method = strtolower($method);
+		$step = $this->getCallCount($method);
+		$this->addCall($method, $args);
+		$this->checkExpectations($method, $args, $step);
+		$was = $this->disableEStrict();
+		try {
+			$result = &$this->emulateCall($method, $args, $step);
+		} catch (Exception $e) {
+			$this->restoreEStrict($was);
+			throw $e;
+		}
+		$this->restoreEStrict($was);
+		return $result;
 	}
-}
 
-/**
- *   Our mock has to be able to return anything, including
- *   variable references. To allow for these mixed returns
- *   we have to disable the E_STRICT warnings while the
- *   method calls are emulated.
- */
-private function disableEStrict() {
-	$was = error_reporting();
-	error_reporting($was & ~E_STRICT);
-	return $was;
-}
+	/**
+	 *    Finds the return value matching the incoming
+	 *    arguments. If there is no matching value found
+	 *    then an error is triggered.
+	 *    @param string $method      Method name.
+	 *    @param array $args         Calling arguments.
+	 *    @param integer $step       Current position in the
+	 *                               call history.
+	 *    @return mixed              Stored return or other action.
+	 */
+	protected function &emulateCall($method, $args, $step) {
+		return $this->actions->respond($step, $method, $args);
+	}
 
-/**
- *  Restores the E_STRICT level if it was previously set.
- *  @param integer $was     Previous error reporting level.
- */
-private function restoreEStrict($was) {
-	error_reporting($was);
-}
+	/**
+	 *    Tests the arguments against expectations.
+	 *    @param string $method        Method to check.
+	 *    @param array $args           Argument list to match.
+	 *    @param integer $timing       The position of this call
+	 *                                 in the call history.
+	 */
+	protected function checkExpectations($method, $args, $timing) {
+		$test = $this->getCurrentTestCase();
+		if (isset($this->max_counts[$method])) {
+			if (! $this->max_counts[$method]->test($timing + 1)) {
+				$test->assert($this->max_counts[$method], $timing + 1);
+			}
+		}
+		if (isset($this->expected_args_at[$timing][$method])) {
+			$test->assert(
+					$this->expected_args_at[$timing][$method],
+					$args,
+					"Mock method [$method] at [$timing] -> %s");
+		} elseif (isset($this->expected_args[$method])) {
+			$test->assert(
+					$this->expected_args[$method],
+					$args,
+					"Mock method [$method] -> %s");
+		}
+	}
+
+	/**
+	 *   Our mock has to be able to return anything, including
+	 *   variable references. To allow for these mixed returns
+	 *   we have to disable the E_STRICT warnings while the
+	 *   method calls are emulated.
+	 */
+	private function disableEStrict() {
+		$was = error_reporting();
+		error_reporting($was & ~E_STRICT);
+		return $was;
+	}
+
+	/**
+	 *  Restores the E_STRICT level if it was previously set.
+	 *  @param integer $was     Previous error reporting level.
+	 */
+	private function restoreEStrict($was) {
+		error_reporting($was);
+	}
 }
 
 /**
@@ -1473,8 +1473,8 @@ class MockGenerator {
 	 */
 	protected function isConstructor($method) {
 		return in_array(
-		strtolower($method),
-		array('__construct', '__destruct'));
+				strtolower($method),
+				array('__construct', '__destruct'));
 	}
 
 	/**
@@ -1484,7 +1484,7 @@ class MockGenerator {
 	 */
 	protected function addMethodList($methods) {
 		return "    protected \$mocked_methods = array('" .
-		implode("', '", array_map('strtolower', $methods)) .
+				implode("', '", array_map('strtolower', $methods)) .
 				"');\n";
 	}
 

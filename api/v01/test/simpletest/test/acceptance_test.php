@@ -1186,7 +1186,7 @@ class TestOfFileUploads extends SimpleTestAcceptanceTest {
 	function testSingleFileUpload() {
 		$this->get($this->samples() . 'upload_form.html');
 		$this->assertTrue($this->setField('Content:',
-		dirname(__FILE__) . '/support/upload_sample.txt'));
+				dirname(__FILE__) . '/support/upload_sample.txt'));
 		$this->assertField('Content:', dirname(__FILE__) . '/support/upload_sample.txt');
 		$this->click('Go!');
 		$this->assertText('Sample for testing file upload');
@@ -1195,11 +1195,11 @@ class TestOfFileUploads extends SimpleTestAcceptanceTest {
 	function testMultipleFileUpload() {
 		$this->get($this->samples() . 'upload_form.html');
 		$this->assertTrue($this->setField('Content:',
-		dirname(__FILE__) . '/support/upload_sample.txt'));
+				dirname(__FILE__) . '/support/upload_sample.txt'));
 		$this->assertTrue($this->setField('Supplemental:',
-		dirname(__FILE__) . '/support/supplementary_upload_sample.txt'));
+				dirname(__FILE__) . '/support/supplementary_upload_sample.txt'));
 		$this->assertField('Supplemental:',
-		dirname(__FILE__) . '/support/supplementary_upload_sample.txt');
+				dirname(__FILE__) . '/support/supplementary_upload_sample.txt');
 		$this->click('Go!');
 		$this->assertText('Sample for testing file upload');
 		$this->assertText('Some more text content');
@@ -1208,10 +1208,10 @@ class TestOfFileUploads extends SimpleTestAcceptanceTest {
 	function testBinaryFileUpload() {
 		$this->get($this->samples() . 'upload_form.html');
 		$this->assertTrue($this->setField('Content:',
-		dirname(__FILE__) . '/support/latin1_sample'));
+				dirname(__FILE__) . '/support/latin1_sample'));
 		$this->click('Go!');
 		$this->assertText(
-		implode('', file(dirname(__FILE__) . '/support/latin1_sample')));
+				implode('', file(dirname(__FILE__) . '/support/latin1_sample')));
 	}
 }
 
@@ -1242,7 +1242,7 @@ class TestOfLiveHistoryNavigation extends SimpleTestAcceptanceTest {
 
 	function testGetRetryResubmitsData() {
 		$this->assertTrue($this->get(
-		$this->samples() . 'network_confirm.php?a=aaa'));
+				$this->samples() . 'network_confirm.php?a=aaa'));
 		$this->assertPattern('/Request method.*?<dd>GET<\/dd>/');
 		$this->assertText('a=[aaa]');
 		$this->retry();
@@ -1252,8 +1252,8 @@ class TestOfLiveHistoryNavigation extends SimpleTestAcceptanceTest {
 
 	function testGetRetryResubmitsExtraData() {
 		$this->assertTrue($this->get(
-		$this->samples() . 'network_confirm.php',
-		array('a' => 'aaa')));
+				$this->samples() . 'network_confirm.php',
+				array('a' => 'aaa')));
 		$this->assertPattern('/Request method.*?<dd>GET<\/dd>/');
 		$this->assertText('a=[aaa]');
 		$this->retry();
@@ -1263,8 +1263,8 @@ class TestOfLiveHistoryNavigation extends SimpleTestAcceptanceTest {
 
 	function testPostRetryResubmitsData() {
 		$this->assertTrue($this->post(
-		$this->samples() . 'network_confirm.php',
-		array('a' => 'aaa')));
+				$this->samples() . 'network_confirm.php',
+				array('a' => 'aaa')));
 		$this->assertPattern('/Request method.*?<dd>POST<\/dd>/');
 		$this->assertText('a=[aaa]');
 		$this->retry();
@@ -1274,7 +1274,7 @@ class TestOfLiveHistoryNavigation extends SimpleTestAcceptanceTest {
 
 	function testGetRetryResubmitsRepeatedData() {
 		$this->assertTrue($this->get(
-		$this->samples() . 'network_confirm.php?a=1&a=2'));
+				$this->samples() . 'network_confirm.php?a=1&a=2'));
 		$this->assertPattern('/Request method.*?<dd>GET<\/dd>/');
 		$this->assertText('a=[1, 2]');
 		$this->retry();
@@ -1377,7 +1377,7 @@ class TestOfLoadingFrames extends SimpleTestAcceptanceTest {
 
 	function testMessyFramesetResponsesByName() {
 		$this->assertTrue($this->get(
-		$this->samples() . 'messy_frameset.html'));
+				$this->samples() . 'messy_frameset.html'));
 		$this->assertTitle('Frameset for testing of SimpleTest');
 
 		$this->assertTrue($this->setFrameFocus('Front controller'));

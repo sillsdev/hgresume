@@ -61,8 +61,8 @@ class SimpleTestCompatibility {
 				return false;
 			}
 			return SimpleTestCompatibility::isArrayOfIdenticalTypes(
-			(array) $first,
-			(array) $second);
+					(array) $first,
+					(array) $second);
 		}
 		if (is_array($first) && is_array($second)) {
 			return SimpleTestCompatibility::isArrayOfIdenticalTypes($first, $second);
@@ -86,8 +86,8 @@ class SimpleTestCompatibility {
 		}
 		foreach (array_keys($first) as $key) {
 			$is_identical = SimpleTestCompatibility::isIdenticalType(
-			$first[$key],
-			$second[$key]);
+					$first[$key],
+					$second[$key]);
 			if (! $is_identical) {
 				return false;
 			}
@@ -144,7 +144,7 @@ class SimpleTestCompatibility {
 			return is_a($object, $class);
 		}
 		return ((strtolower($class) == get_class($object))
-		or (is_subclass_of($object, $class)));
+				or (is_subclass_of($object, $class)));
 	}
 
 	/**

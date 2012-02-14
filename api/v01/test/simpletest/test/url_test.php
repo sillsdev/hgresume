@@ -87,14 +87,14 @@ class TestOfUrl extends UnitTestCase {
 		$url = new SimpleUrl('');
 		$url->addRequestParameter('a', '?!"\'#~@[]{}:;<>,./|$%^&*()_+-=');
 		$this->assertIdentical(
-		$request = $url->getEncodedRequest(),
+				$request = $url->getEncodedRequest(),
 				'?a=%3F%21%22%27%23%7E%40%5B%5D%7B%7D%3A%3B%3C%3E%2C.%2F%7C%24%25%5E%26%2A%28%29_%2B-%3D');
 	}
 
 	function testDecodingParameters() {
 		$url = new SimpleUrl('?a=%3F%21%22%27%23%7E%40%5B%5D%7B%7D%3A%3B%3C%3E%2C.%2F%7C%24%25%5E%26%2A%28%29_%2B-%3D');
 		$this->assertEqual(
-		$url->getEncodedRequest(),
+				$url->getEncodedRequest(),
 				'?a=' . urlencode('?!"\'#~@[]{}:;<>,./|$%^&*()_+-='));
 	}
 
@@ -165,7 +165,7 @@ class TestOfUrl extends UnitTestCase {
 	function testPathNormalisation() {
 		$url = new SimpleUrl();
 		$this->assertEqual(
-		$url->normalisePath('https://host.com/I/am/here/../there/somewhere.php'),
+				$url->normalisePath('https://host.com/I/am/here/../there/somewhere.php'),
 				'https://host.com/I/am/there/somewhere.php');
 	}
 
@@ -173,7 +173,7 @@ class TestOfUrl extends UnitTestCase {
 	function testPathNormalisationWithSinglePeriod() {
 		$url = new SimpleUrl();
 		$this->assertEqual(
-		$url->normalisePath('https://host.com/I/am/here/./../there/somewhere.php'),
+			$url->normalisePath('https://host.com/I/am/here/./../there/somewhere.php'),
 			'https://host.com/I/am/there/somewhere.php');
 	}
 
@@ -206,53 +206,53 @@ class TestOfUrl extends UnitTestCase {
 	function testBlitz() {
 		$this->assertUrl(
 				"https://username:password@www.somewhere.com:243/this/that/here.php?a=1&b=2#anchor",
-		array("https", "username", "password", "www.somewhere.com", 243, "/this/that/here.php", "com", "?a=1&b=2", "anchor"),
-		array("a" => "1", "b" => "2"));
+				array("https", "username", "password", "www.somewhere.com", 243, "/this/that/here.php", "com", "?a=1&b=2", "anchor"),
+				array("a" => "1", "b" => "2"));
 		$this->assertUrl(
 				"username:password@www.somewhere.com/this/that/here.php?a=1",
-		array(false, "username", "password", "www.somewhere.com", false, "/this/that/here.php", "com", "?a=1", false),
-		array("a" => "1"));
+				array(false, "username", "password", "www.somewhere.com", false, "/this/that/here.php", "com", "?a=1", false),
+				array("a" => "1"));
 		$this->assertUrl(
 				"username:password@somewhere.com:243?1,2",
-		array(false, "username", "password", "somewhere.com", 243, "/", "com", "", false),
-		array(),
-		array(1, 2));
+				array(false, "username", "password", "somewhere.com", 243, "/", "com", "", false),
+				array(),
+				array(1, 2));
 		$this->assertUrl(
 				"https://www.somewhere.com",
-		array("https", false, false, "www.somewhere.com", false, "/", "com", "", false));
+				array("https", false, false, "www.somewhere.com", false, "/", "com", "", false));
 		$this->assertUrl(
 				"username@www.somewhere.com:243#anchor",
-		array(false, "username", false, "www.somewhere.com", 243, "/", "com", "", "anchor"));
+				array(false, "username", false, "www.somewhere.com", 243, "/", "com", "", "anchor"));
 		$this->assertUrl(
 				"/this/that/here.php?a=1&b=2?3,4",
-		array(false, false, false, false, false, "/this/that/here.php", false, "?a=1&b=2", false),
-		array("a" => "1", "b" => "2"),
-		array(3, 4));
+				array(false, false, false, false, false, "/this/that/here.php", false, "?a=1&b=2", false),
+				array("a" => "1", "b" => "2"),
+				array(3, 4));
 		$this->assertUrl(
 				"username@/here.php?a=1&b=2",
-		array(false, "username", false, false, false, "/here.php", false, "?a=1&b=2", false),
-		array("a" => "1", "b" => "2"));
+				array(false, "username", false, false, false, "/here.php", false, "?a=1&b=2", false),
+				array("a" => "1", "b" => "2"));
 	}
 
 	function testAmbiguousHosts() {
 		$this->assertUrl(
 				"tigger",
-		array(false, false, false, false, false, "tigger", false, "", false));
+				array(false, false, false, false, false, "tigger", false, "", false));
 		$this->assertUrl(
 				"/tigger",
-		array(false, false, false, false, false, "/tigger", false, "", false));
+				array(false, false, false, false, false, "/tigger", false, "", false));
 		$this->assertUrl(
 				"//tigger",
-		array(false, false, false, "tigger", false, "/", false, "", false));
+				array(false, false, false, "tigger", false, "/", false, "", false));
 		$this->assertUrl(
 				"//tigger/",
-		array(false, false, false, "tigger", false, "/", false, "", false));
+				array(false, false, false, "tigger", false, "/", false, "", false));
 		$this->assertUrl(
 				"tigger.com",
-		array(false, false, false, "tigger.com", false, "/", "com", "", false));
+				array(false, false, false, "tigger.com", false, "/", "com", "", false));
 		$this->assertUrl(
 				"me.net/tigger",
-		array(false, false, false, "me.net", false, "/tigger", "net", "", false));
+				array(false, false, false, "me.net", false, "/tigger", "net", "", false));
 	}
 
 	function testAsString() {

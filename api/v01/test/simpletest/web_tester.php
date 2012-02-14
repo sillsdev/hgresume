@@ -120,8 +120,8 @@ class FieldExpectation extends SimpleExpectation {
 		} else {
 			return "Field expectation [" . $dumper->describeValue($this->value) .
 					"] fails with [" .
-			$dumper->describeValue($compare) . "] " .
-			$dumper->describeDifference($this->value, $compare);
+					$dumper->describeValue($compare) . "] " .
+					$dumper->describeDifference($this->value, $compare);
 		}
 	}
 }
@@ -245,7 +245,7 @@ class HttpHeaderExpectation extends SimpleExpectation {
 			$message = $this->expected_value->overlayMessage($compare, $this->getDumper());
 		} else {
 			$message = $this->expected_header .
-			($this->expected_value ? ': ' . $this->expected_value : '');
+					($this->expected_value ? ': ' . $this->expected_value : '');
 		}
 		if (is_string($line = $this->findHeader($compare))) {
 			return "Searching for header [$message] found [$line]";
@@ -355,7 +355,7 @@ class TextExpectation extends SimpleExpectation {
 			$dumper = $this->getDumper();
 			return "Text [" . $this->getSubstring() .
 					"] not detected in [" .
-			$dumper->describeValue($compare) . "]";
+					$dumper->describeValue($compare) . "]";
 		}
 	}
 
@@ -370,8 +370,8 @@ class TextExpectation extends SimpleExpectation {
 		$position = strpos($subject, $substring);
 		$dumper = $this->getDumper();
 		return "Text [$substring] detected at character [$position] in [" .
-		$dumper->describeValue($subject) . "] in region [" .
-		$dumper->clipString($subject, 100, $position) . "]";
+				$dumper->describeValue($subject) . "] in region [" .
+				$dumper->clipString($subject, 100, $position) . "]";
 	}
 }
 
@@ -416,7 +416,7 @@ class NoTextExpectation extends TextExpectation {
 			$dumper = $this->getDumper();
 			return "Text [" . $this->getSubstring() .
 					"] not detected in [" .
-			$dumper->describeValue($compare) . "]";
+					$dumper->describeValue($compare) . "]";
 		} else {
 			return $this->describeTextMatch($this->getSubstring(), $compare);
 		}
@@ -798,7 +798,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function authenticate($username, $password) {
 		return $this->failOnError(
-		$this->browser->authenticate($username, $password));
+				$this->browser->authenticate($username, $password));
 	}
 
 	/**
@@ -884,8 +884,8 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertClickable($label, $message = '%s') {
 		return $this->assertTrue(
-		$this->browser->isClickable($label),
-		sprintf($message, "Click target [$label] should exist"));
+				$this->browser->isClickable($label),
+				sprintf($message, "Click target [$label] should exist"));
 	}
 
 	/**
@@ -899,7 +899,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function clickSubmit($label = 'Submit', $additional = false) {
 		return $this->failOnError(
-		$this->browser->clickSubmit($label, $additional));
+				$this->browser->clickSubmit($label, $additional));
 	}
 
 	/**
@@ -912,7 +912,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function clickSubmitByName($name, $additional = false) {
 		return $this->failOnError(
-		$this->browser->clickSubmitByName($name, $additional));
+				$this->browser->clickSubmitByName($name, $additional));
 	}
 
 	/**
@@ -925,7 +925,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function clickSubmitById($id, $additional = false) {
 		return $this->failOnError(
-		$this->browser->clickSubmitById($id, $additional));
+				$this->browser->clickSubmitById($id, $additional));
 	}
 
 	/**
@@ -936,8 +936,8 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertSubmit($label, $message = '%s') {
 		return $this->assertTrue(
-		$this->browser->isSubmit($label),
-		sprintf($message, "Submit button [$label] should exist"));
+				$this->browser->isSubmit($label),
+				sprintf($message, "Submit button [$label] should exist"));
 	}
 
 	/**
@@ -955,7 +955,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function clickImage($label, $x = 1, $y = 1, $additional = false) {
 		return $this->failOnError(
-		$this->browser->clickImage($label, $x, $y, $additional));
+				$this->browser->clickImage($label, $x, $y, $additional));
 	}
 
 	/**
@@ -973,7 +973,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function clickImageByName($name, $x = 1, $y = 1, $additional = false) {
 		return $this->failOnError(
-		$this->browser->clickImageByName($name, $x, $y, $additional));
+				$this->browser->clickImageByName($name, $x, $y, $additional));
 	}
 
 	/**
@@ -990,7 +990,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function clickImageById($id, $x = 1, $y = 1, $additional = false) {
 		return $this->failOnError(
-		$this->browser->clickImageById($id, $x, $y, $additional));
+				$this->browser->clickImageById($id, $x, $y, $additional));
 	}
 
 	/**
@@ -1001,8 +1001,8 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertImage($label, $message = '%s') {
 		return $this->assertTrue(
-		$this->browser->isImage($label),
-		sprintf($message, "Image with text [$label] should exist"));
+				$this->browser->isImage($label),
+				sprintf($message, "Image with text [$label] should exist"));
 	}
 
 	/**
@@ -1073,8 +1073,8 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNoLink($label, $message = '%s') {
 		return $this->assertTrue(
-		$this->browser->getLink($label) === false,
-		sprintf($message, "Link [$label] should not exist"));
+				$this->browser->getLink($label) === false,
+				sprintf($message, "Link [$label] should not exist"));
 	}
 
 	/**
@@ -1108,8 +1108,8 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNoLinkById($id, $message = '%s') {
 		return $this->assertTrue(
-		$this->browser->getLinkById($id) === false,
-		sprintf($message, "Link ID [$id] should not exist"));
+				$this->browser->getLinkById($id) === false,
+				sprintf($message, "Link ID [$id] should not exist"));
 	}
 
 	/**
@@ -1212,13 +1212,13 @@ class WebTestCase extends SimpleTestCase {
 	protected function assertFieldValue($identifier, $value, $expected, $message) {
 		if ($expected === true) {
 			return $this->assertTrue(
-			isset($value),
-			sprintf($message, "Field [$identifier] should exist"));
+					isset($value),
+					sprintf($message, "Field [$identifier] should exist"));
 		}
 		if (! SimpleExpectation::isExpectation($expected)) {
 			$identifier = str_replace('%', '%%', $identifier);
 			$expected = new FieldExpectation(
-			$expected,
+					$expected,
 					"Field [$identifier] should match with [%s]");
 		}
 		return $this->assert($expected, $value, $message);
@@ -1237,7 +1237,7 @@ class WebTestCase extends SimpleTestCase {
 		$responses = (is_array($responses) ? $responses : array($responses));
 		$code = $this->browser->getResponseCode();
 		$message = sprintf($message, "Expecting response in [" .
-		implode(", ", $responses) . "] got [$code]");
+				implode(", ", $responses) . "] got [$code]");
 		return $this->assertTrue(in_array($code, $responses), $message);
 	}
 
@@ -1253,7 +1253,7 @@ class WebTestCase extends SimpleTestCase {
 		$types = (is_array($types) ? $types : array($types));
 		$type = $this->browser->getMimeType();
 		$message = sprintf($message, "Expecting mime type in [" .
-		implode(", ", $types) . "] got [$type]");
+				implode(", ", $types) . "] got [$type]");
 		return $this->assertTrue(in_array($type, $types), $message);
 	}
 
@@ -1268,16 +1268,16 @@ class WebTestCase extends SimpleTestCase {
 	function assertAuthentication($authentication = false, $message = '%s') {
 		if (! $authentication) {
 			$message = sprintf($message, "Expected any authentication type, got [" .
-			$this->browser->getAuthentication() . "]");
+					$this->browser->getAuthentication() . "]");
 			return $this->assertTrue(
-			$this->browser->getAuthentication(),
-			$message);
+					$this->browser->getAuthentication(),
+					$message);
 		} else {
 			$message = sprintf($message, "Expected authentication [$authentication] got [" .
-			$this->browser->getAuthentication() . "]");
+					$this->browser->getAuthentication() . "]");
 			return $this->assertTrue(
-			strtolower($this->browser->getAuthentication()) == strtolower($authentication),
-			$message);
+					strtolower($this->browser->getAuthentication()) == strtolower($authentication),
+					$message);
 		}
 	}
 
@@ -1290,7 +1290,7 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNoAuthentication($message = '%s') {
 		$message = sprintf($message, "Expected no authentication type, got [" .
-		$this->browser->getAuthentication() . "]");
+				$this->browser->getAuthentication() . "]");
 		return $this->assertFalse($this->browser->getAuthentication(), $message);
 	}
 
@@ -1306,8 +1306,8 @@ class WebTestCase extends SimpleTestCase {
 			$realm = new EqualExpectation($realm);
 		}
 		return $this->assert(
-		$realm,
-		$this->browser->getRealm(),
+				$realm,
+				$this->browser->getRealm(),
 				"Expected realm -> $message");
 	}
 
@@ -1323,9 +1323,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertHeader($header, $value = false, $message = '%s') {
 		return $this->assert(
-		new HttpHeaderExpectation($header, $value),
-		$this->browser->getHeaders(),
-		$message);
+				new HttpHeaderExpectation($header, $value),
+				$this->browser->getHeaders(),
+				$message);
 	}
 
 	/**
@@ -1339,9 +1339,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNoHeader($header, $message = '%s') {
 		return $this->assert(
-		new NoHttpHeaderExpectation($header),
-		$this->browser->getHeaders(),
-		$message);
+				new NoHttpHeaderExpectation($header),
+				$this->browser->getHeaders(),
+				$message);
 	}
 
 	/**
@@ -1368,9 +1368,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertText($text, $message = '%s') {
 		return $this->assert(
-		new TextExpectation($text),
-		$this->browser->getContentAsText(),
-		$message);
+				new TextExpectation($text),
+				$this->browser->getContentAsText(),
+				$message);
 	}
 
 	/**
@@ -1383,9 +1383,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNoText($text, $message = '%s') {
 		return $this->assert(
-		new NoTextExpectation($text),
-		$this->browser->getContentAsText(),
-		$message);
+				new NoTextExpectation($text),
+				$this->browser->getContentAsText(),
+				$message);
 	}
 
 	/**
@@ -1399,9 +1399,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertPattern($pattern, $message = '%s') {
 		return $this->assert(
-		new PatternExpectation($pattern),
-		$this->browser->getContent(),
-		$message);
+				new PatternExpectation($pattern),
+				$this->browser->getContent(),
+				$message);
 	}
 
 	/**
@@ -1415,9 +1415,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNoPattern($pattern, $message = '%s') {
 		return $this->assert(
-		new NoPatternExpectation($pattern),
-		$this->browser->getContent(),
-		$message);
+				new NoPatternExpectation($pattern),
+				$this->browser->getContent(),
+				$message);
 	}
 
 	/**
@@ -1434,8 +1434,8 @@ class WebTestCase extends SimpleTestCase {
 		$value = $this->getCookie($name);
 		if (! $expected) {
 			return $this->assertTrue(
-			$value,
-			sprintf($message, "Expecting cookie [$name]"));
+					$value,
+					sprintf($message, "Expecting cookie [$name]"));
 		}
 		if (! SimpleExpectation::isExpectation($expected)) {
 			$expected = new EqualExpectation($expected);
@@ -1453,8 +1453,8 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNoCookie($name, $message = '%s') {
 		return $this->assertTrue(
-		$this->getCookie($name) === null or $this->getCookie($name) === false,
-		sprintf($message, "Not expecting cookie [$name]"));
+				$this->getCookie($name) === null or $this->getCookie($name) === false,
+				sprintf($message, "Not expecting cookie [$name]"));
 	}
 
 	/**
@@ -1496,9 +1496,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertEqual($first, $second, $message = '%s') {
 		return $this->assert(
-		new EqualExpectation($first),
-		$second,
-		$message);
+				new EqualExpectation($first),
+				$second,
+				$message);
 	}
 
 	/**
@@ -1513,9 +1513,9 @@ class WebTestCase extends SimpleTestCase {
 	 */
 	function assertNotEqual($first, $second, $message = '%s') {
 		return $this->assert(
-		new NotEqualExpectation($first),
-		$second,
-		$message);
+				new NotEqualExpectation($first),
+				$second,
+				$message);
 	}
 
 	/**

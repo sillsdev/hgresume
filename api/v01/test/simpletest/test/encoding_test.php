@@ -16,14 +16,14 @@ class TestOfEncodedParts extends UnitTestCase {
 	function testMimeEncodedAsHeadersAndContent() {
 		$pair = new SimpleEncodedPair('a', 'A');
 		$this->assertEqual(
-		$pair->asMime(),
+				$pair->asMime(),
 				"Content-Disposition: form-data; name=\"a\"\r\n\r\nA");
 	}
 
 	function testAttachmentEncodedAsHeadersWithDispositionAndContent() {
 		$part = new SimpleAttachment('a', 'A', 'aaa.txt');
 		$this->assertEqual(
-		$part->asMime(),
+				$part->asMime(),
 				"Content-Disposition: form-data; name=\"a\"; filename=\"aaa.txt\"\r\n" .
 						"Content-Type: text/plain\r\n\r\nA");
 	}

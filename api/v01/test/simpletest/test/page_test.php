@@ -99,67 +99,67 @@ class TestOfHtmlStrippingAndNormalisation extends UnitTestCase {
 
 	function testImageSuppressionWhileKeepingParagraphsAndAltText() {
 		$this->assertEqual(
-		SimplePage::normalise('<img src="foo.png" /><p>some text</p><img src="bar.png" alt="bar" />'),
+				SimplePage::normalise('<img src="foo.png" /><p>some text</p><img src="bar.png" alt="bar" />'),
 				'some text bar');
 	}
 
 	function testSpaceNormalisation() {
 		$this->assertEqual(
-		SimplePage::normalise("\nOne\tTwo   \nThree\t"),
+				SimplePage::normalise("\nOne\tTwo   \nThree\t"),
 				'One Two Three');
 	}
 
 	function testMultilinesCommentSuppression() {
 		$this->assertEqual(
-		SimplePage::normalise('<!--\n Hello \n-->'),
+				SimplePage::normalise('<!--\n Hello \n-->'),
 				'');
 	}
 
 	function testCommentSuppression() {
 		$this->assertEqual(
-		SimplePage::normalise('<!--Hello-->'),
+				SimplePage::normalise('<!--Hello-->'),
 				'');
 	}
 
 	function testJavascriptSuppression() {
 		$this->assertEqual(
-		SimplePage::normalise('<script attribute="test">\nHello\n</script>'),
+				SimplePage::normalise('<script attribute="test">\nHello\n</script>'),
 				'');
 		$this->assertEqual(
-		SimplePage::normalise('<script attribute="test">Hello</script>'),
+				SimplePage::normalise('<script attribute="test">Hello</script>'),
 				'');
 		$this->assertEqual(
-		SimplePage::normalise('<script>Hello</script>'),
+				SimplePage::normalise('<script>Hello</script>'),
 				'');
 	}
 
 	function testTagSuppression() {
 		$this->assertEqual(
-		SimplePage::normalise('<b>Hello</b>'),
+				SimplePage::normalise('<b>Hello</b>'),
 				'Hello');
 	}
 
 	function testAdjoiningTagSuppression() {
 		$this->assertEqual(
-		SimplePage::normalise('<b>Hello</b><em>Goodbye</em>'),
+				SimplePage::normalise('<b>Hello</b><em>Goodbye</em>'),
 				'HelloGoodbye');
 	}
 
 	function testExtractImageAltTextWithDifferentQuotes() {
 		$this->assertEqual(
-		SimplePage::normalise('<img alt="One"><img alt=\'Two\'><img alt=Three>'),
+				SimplePage::normalise('<img alt="One"><img alt=\'Two\'><img alt=Three>'),
 				'One Two Three');
 	}
 
 	function testExtractImageAltTextMultipleTimes() {
 		$this->assertEqual(
-		SimplePage::normalise('<img alt="One"><img alt="Two"><img alt="Three">'),
+				SimplePage::normalise('<img alt="One"><img alt="Two"><img alt="Three">'),
 				'One Two Three');
 	}
 
 	function testHtmlEntityTranslation() {
 		$this->assertEqual(
-		SimplePage::normalise('&lt;&gt;&quot;&amp;&#039;'),
+				SimplePage::normalise('&lt;&gt;&quot;&amp;&#039;'),
 				'<>"&\'');
 	}
 }

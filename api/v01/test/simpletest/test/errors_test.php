@@ -24,7 +24,7 @@ class TestOfErrorQueue extends UnitTestCase {
 	function testExpectationMatchCancelsIncomingError() {
 		$test = new MockSimpleTestCase();
 		$test->expectOnce('assert', array(
-		new IdenticalExpectation(new AnythingExpectation()),
+				new IdenticalExpectation(new AnythingExpectation()),
 				'B',
 				'a message'));
 		$test->setReturnValue('assert', true);
@@ -147,7 +147,7 @@ class TestOfErrors extends UnitTestCase {
 class TestOfPHP52RecoverableErrors extends UnitTestCase {
 	function skip() {
 		$this->skipIf(
-		version_compare(phpversion(), '5.2', '<'),
+				version_compare(phpversion(), '5.2', '<'),
 				'E_RECOVERABLE_ERROR not tested for PHP below 5.2');
 	}
 
@@ -168,7 +168,7 @@ class TestOfPHP52RecoverableErrors extends UnitTestCase {
 class TestOfErrorsExcludingPHP52AndAbove extends UnitTestCase {
 	function skip() {
 		$this->skipIf(
-		version_compare(phpversion(), '5.2', '>='),
+				version_compare(phpversion(), '5.2', '>='),
 				'E_USER_ERROR not tested for PHP 5.2 and above');
 	}
 

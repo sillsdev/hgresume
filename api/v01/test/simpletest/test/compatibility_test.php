@@ -12,13 +12,13 @@ class TestOfCompatibility extends UnitTestCase {
 
 	function testIsA() {
 		$this->assertTrue(SimpleTestCompatibility::isA(
-		new ComparisonClass(),
+				new ComparisonClass(),
 				'ComparisonClass'));
 		$this->assertFalse(SimpleTestCompatibility::isA(
-		new ComparisonClass(),
+				new ComparisonClass(),
 				'ComparisonSubclass'));
 		$this->assertTrue(SimpleTestCompatibility::isA(
-		new ComparisonSubclass(),
+				new ComparisonSubclass(),
 				'ComparisonClass'));
 	}
 
@@ -39,14 +39,14 @@ class TestOfCompatibility extends UnitTestCase {
 		$thing_reference = &$thing;
 		$thing_copy = $thing;
 		$this->assertTrue(SimpleTestCompatibility::isReference(
-		$thing,
-		$thing));
+				$thing,
+				$thing));
 		$this->assertTrue(SimpleTestCompatibility::isReference(
-		$thing,
-		$thing_reference));
+				$thing,
+				$thing_reference));
 		$this->assertFalse(SimpleTestCompatibility::isReference(
-		$thing,
-		$thing_copy));
+				$thing,
+				$thing_copy));
 	}
 
 	function testObjectReferences () {
@@ -55,32 +55,32 @@ class TestOfCompatibility extends UnitTestCase {
 		$object_copy = new ComparisonClass();
 		$object_assignment = $object;
 		$this->assertTrue(SimpleTestCompatibility::isReference(
-		$object,
-		$object));
+				$object,
+				$object));
 		$this->assertTrue(SimpleTestCompatibility::isReference(
-		$object,
-		$object_reference));
+				$object,
+				$object_reference));
 		$this->assertFalse(SimpleTestCompatibility::isReference(
-		$object,
-		$object_copy));
+				$object,
+				$object_copy));
 		if (version_compare(phpversion(), '5', '>=')) {
 			$this->assertTrue(SimpleTestCompatibility::isReference(
-			$object,
-			$object_assignment));
+					$object,
+					$object_assignment));
 		} else {
 			$this->assertFalse(SimpleTestCompatibility::isReference(
-			$object,
-			$object_assignment));
+					$object,
+					$object_assignment));
 		}
 	}
 
 	function testInteraceComparison() {
 		$object = new ComparisonClassWithInterface();
 		$this->assertFalse(SimpleTestCompatibility::isA(
-		new ComparisonClass(),
+				new ComparisonClass(),
 				'ComparisonInterface'));
 		$this->assertTrue(SimpleTestCompatibility::isA(
-		new ComparisonClassWithInterface(),
+				new ComparisonClassWithInterface(),
 				'ComparisonInterface'));
 	}
 }

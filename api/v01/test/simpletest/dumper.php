@@ -141,7 +141,7 @@ class SimpleDumper {
 	protected function describeGenericDifference($first, $second) {
 		return "as [" . $this->describeValue($first) .
 				"] does not match [" .
-		$this->describeValue($second) . "]";
+				$this->describeValue($second) . "]";
 	}
 
 	/**
@@ -186,8 +186,8 @@ class SimpleDumper {
 		$position = $this->stringDiffersAt($first, $second);
 		$message = "at character $position";
 		$message .= " with [" .
-		$this->clipString($first, 200, $position) . "] and [" .
-		$this->clipString($second, 200, $position) . "]";
+				$this->clipString($first, 200, $position) . "] and [" .
+				$this->clipString($second, 200, $position) . "]";
 		return $message;
 	}
 
@@ -206,8 +206,8 @@ class SimpleDumper {
 		}
 		return "because [" . $this->describeValue($first) .
 				"] differs from [" .
-		$this->describeValue($second) . "] by " .
-		abs($first - $second);
+				$this->describeValue($second) . "] by " .
+				abs($first - $second);
 	}
 
 	/**
@@ -225,8 +225,8 @@ class SimpleDumper {
 		}
 		return "because [" . $this->describeValue($first) .
 				"] differs from [" .
-		$this->describeValue($second) . "] by " .
-		abs($first - $second);
+				$this->describeValue($second) . "] by " .
+				abs($first - $second);
 	}
 
 	/**
@@ -244,8 +244,8 @@ class SimpleDumper {
 		}
 		if (! $this->isMatchingKeys($first, $second, $identical)) {
 			return "as key list [" .
-			implode(", ", array_keys($first)) . "] does not match key list [" .
-			implode(", ", array_keys($second)) . "]";
+					implode(", ", array_keys($first)) . "] does not match key list [" .
+					implode(", ", array_keys($second)) . "]";
 		}
 		foreach (array_keys($first) as $key) {
 			if ($identical && ($first[$key] === $second[$key])) {
@@ -255,9 +255,9 @@ class SimpleDumper {
 				continue;
 			}
 			return "with member [$key] " . $this->describeDifference(
-			$first[$key],
-			$second[$key],
-			$identical);
+					$first[$key],
+					$second[$key],
+					$identical);
 		}
 		return "";
 	}
@@ -309,9 +309,9 @@ class SimpleDumper {
 			return $this->describeGenericDifference($first, $second);
 		}
 		return $this->describeArrayDifference(
-		$this->getMembers($first),
-		$this->getMembers($second),
-		$identical);
+				$this->getMembers($first),
+				$this->getMembers($second),
+				$identical);
 	}
 
 	/**
@@ -332,7 +332,7 @@ class SimpleDumper {
 				$members[$property->getName()] = $property->getValue($object);
 			} catch (ReflectionException $e) {
 				$members[$property->getName()] =
-				$this->getPrivatePropertyNoMatterWhat($property->getName(), $object);
+					$this->getPrivatePropertyNoMatterWhat($property->getName(), $object);
 			}
 		}
 		return $members;

@@ -112,7 +112,7 @@ class SimpleTestCase {
 	 */
 	function createInvoker() {
 		return new SimpleErrorTrappingInvoker(
-		new SimpleExceptionTrappingInvoker(new SimpleInvoker($this)));
+				new SimpleExceptionTrappingInvoker(new SimpleInvoker($this)));
 	}
 
 	/**
@@ -243,7 +243,7 @@ class SimpleTestCase {
 			trigger_error('Can only make assertions within test methods');
 		}
 		$this->reporter->paintPass(
-		$message . $this->getAssertionLine());
+				$message . $this->getAssertionLine());
 		return true;
 	}
 
@@ -257,7 +257,7 @@ class SimpleTestCase {
 			trigger_error('Can only make assertions within test methods');
 		}
 		$this->reporter->paintFail(
-		$message . $this->getAssertionLine());
+				$message . $this->getAssertionLine());
 		return false;
 	}
 
@@ -312,12 +312,12 @@ class SimpleTestCase {
 	function assert($expectation, $compare, $message = '%s') {
 		if ($expectation->test($compare)) {
 			return $this->pass(sprintf(
-			$message,
-			$expectation->overlayMessage($compare, $this->reporter->getDumper())));
+					$message,
+					$expectation->overlayMessage($compare, $this->reporter->getDumper())));
 		} else {
 			return $this->fail(sprintf(
-			$message,
-			$expectation->overlayMessage($compare, $this->reporter->getDumper())));
+					$message,
+					$expectation->overlayMessage($compare, $this->reporter->getDumper())));
 		}
 	}
 
@@ -415,8 +415,8 @@ class SimpleFileLoader {
 	 */
 	protected function scrapeClassesFromFile($test_file) {
 		preg_match_all('~^\s*class\s+(\w+)(\s+(extends|implements)\s+\w+)*\s*\{~mi',
-		file_get_contents($test_file),
-		$matches );
+						file_get_contents($test_file),
+						$matches );
 		return $matches[1];
 	}
 
@@ -498,7 +498,7 @@ class TestSuite {
 	function getLabel() {
 		if (! $this->label) {
 			return ($this->getSize() == 1) ?
-			get_class($this->test_cases[0]) : get_class($this);
+					get_class($this->test_cases[0]) : get_class($this);
 		} else {
 			return $this->label;
 		}

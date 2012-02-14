@@ -49,7 +49,7 @@ class SimpleRoute {
 	 */
 	protected function getRequestLine($method) {
 		return $method . ' ' . $this->url->getPath() .
-		$this->url->getEncodedRequest() . ' HTTP/1.0';
+				$this->url->getEncodedRequest() . ' HTTP/1.0';
 	}
 
 	/**
@@ -75,10 +75,10 @@ class SimpleRoute {
 	function createConnection($method, $timeout) {
 		$default_port = ('https' == $this->url->getScheme()) ? 443 : 80;
 		$socket = $this->createSocket(
-		$this->url->getScheme() ? $this->url->getScheme() : 'http',
-		$this->url->getHost(),
-		$this->url->getPort() ? $this->url->getPort() : $default_port,
-		$timeout);
+				$this->url->getScheme() ? $this->url->getScheme() : 'http',
+				$this->url->getHost(),
+				$this->url->getPort() ? $this->url->getPort() : $default_port,
+				$timeout);
 		if (! $socket->isError()) {
 			$socket->write($this->getRequestLine($method) . "\r\n");
 			$socket->write($this->getHostLine() . "\r\n");
@@ -145,7 +145,7 @@ class SimpleProxyRoute extends SimpleRoute {
 		$scheme = $url->getScheme() ? $url->getScheme() : 'http';
 		$port = $url->getPort() ? ':' . $url->getPort() : '';
 		return $method . ' ' . $scheme . '://' . $url->getHost() . $port .
-		$url->getPath() . $url->getEncodedRequest() . ' HTTP/1.0';
+				$url->getPath() . $url->getEncodedRequest() . ' HTTP/1.0';
 	}
 
 	/**
@@ -169,10 +169,10 @@ class SimpleProxyRoute extends SimpleRoute {
 	 */
 	function createConnection($method, $timeout) {
 		$socket = $this->createSocket(
-		$this->proxy->getScheme() ? $this->proxy->getScheme() : 'http',
-		$this->proxy->getHost(),
-		$this->proxy->getPort() ? $this->proxy->getPort() : 8080,
-		$timeout);
+				$this->proxy->getScheme() ? $this->proxy->getScheme() : 'http',
+				$this->proxy->getHost(),
+				$this->proxy->getPort() ? $this->proxy->getPort() : 8080,
+				$timeout);
 		if ($socket->isError()) {
 			return $socket;
 		}
@@ -180,7 +180,7 @@ class SimpleProxyRoute extends SimpleRoute {
 		$socket->write($this->getHostLine() . "\r\n");
 		if ($this->username && $this->password) {
 			$socket->write('Proxy-Authorization: Basic ' .
-			base64_encode($this->username . ':' . $this->password) .
+					base64_encode($this->username . ':' . $this->password) .
 					"\r\n");
 		}
 		$socket->write("Connection: close\r\n");
@@ -280,9 +280,9 @@ class SimpleHttpRequest {
 	 */
 	protected function createResponse($socket) {
 		$response = new SimpleHttpResponse(
-		$socket,
-		$this->route->getUrl(),
-		$this->encoding);
+				$socket,
+				$this->route->getUrl(),
+				$this->encoding);
 		$socket->close();
 		return $response;
 	}
@@ -366,7 +366,7 @@ class SimpleHttpHeaders {
 	 */
 	function isRedirect() {
 		return in_array($this->response_code, array(301, 302, 303, 307)) &&
-		(boolean)$this->getLocation();
+				(boolean)$this->getLocation();
 	}
 
 	/**
@@ -377,8 +377,8 @@ class SimpleHttpHeaders {
 	 */
 	function isChallenge() {
 		return ($this->response_code == 401) &&
-		(boolean)$this->authentication &&
-		(boolean)$this->realm;
+				(boolean)$this->authentication &&
+				(boolean)$this->realm;
 	}
 
 	/**
@@ -417,11 +417,11 @@ class SimpleHttpHeaders {
 	function writeCookiesToJar($jar, $url) {
 		foreach ($this->cookies as $cookie) {
 			$jar->setCookie(
-			$cookie->getName(),
-			$cookie->getValue(),
-			$url->getHost(),
-			$cookie->getPath(),
-			$cookie->getExpiry());
+					$cookie->getName(),
+					$cookie->getValue(),
+					$url->getHost(),
+					$cookie->getPath(),
+					$cookie->getExpiry());
 		}
 	}
 
@@ -467,10 +467,10 @@ class SimpleHttpHeaders {
 			}
 		}
 		return new SimpleCookie(
-		$cookie[1],
-		trim($cookie[2]),
-		isset($cookie["path"]) ? $cookie["path"] : "",
-		isset($cookie["expires"]) ? $cookie["expires"] : false);
+				$cookie[1],
+				trim($cookie[2]),
+				isset($cookie["path"]) ? $cookie["path"] : "",
+				isset($cookie["expires"]) ? $cookie["expires"] : false);
 	}
 }
 
