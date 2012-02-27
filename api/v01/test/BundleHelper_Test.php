@@ -6,35 +6,11 @@ require_once(SourcePath . "/BundleHelper.php");
 
 class TestOfBundleHelper extends UnitTestCase {
 
-	function testGetAssemblyDir_NewBundle_CreatesDir() {
+	function testCleanUpFiles_BundleFileExists_DeletesBundleFile() {
 		$bundle = new BundleHelper("id123");
-		$path = $bundle->getAssemblyDir();
-		$this->assertTrue(is_dir($path));
-	}
-
-	function testGetPullDir_NewBundle_CreatesDir() {
-		$bundle = new BundleHelper("id123");
-		$path = $bundle->getPullDir();
-		$this->assertTrue(is_dir($path));
-	}
-
-	function testCleanUpPush_BundleWithChunkFiles_DeletesDir() {
-		$bundle = new BundleHelper("id123");
-		$path = $bundle->getAssemblyDir();
-		$this->assertTrue(is_dir($path));
-		file_put_contents("$path/sample.chunk", "sample data");
-		file_put_contents("$path/sample2.chunk", "more sample data");
-		$bundle->cleanUpPush();
-		$this->assertFalse(is_dir($path));
-	}
-
-	function testCleanUpPull_BundleFileExists_DeletesBundleFile() {
-		$bundle = new BundleHelper("id123");
-		$path = $bundle->getPullDir();
-		$this->assertTrue(is_dir($path));
-		$bundleFilename = $bundle->getPullFilePath();
+		$bundleFilename = $bundle->getBundleFileName();
 		file_put_contents($bundleFilename, "bundle data");
-		$bundle->cleanUpPull();
+		$bundle->cleanUpFiles();
 		$this->assertFalse(is_file($bundleFilename));
 	}
 

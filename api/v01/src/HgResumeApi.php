@@ -63,7 +63,7 @@ class HgResumeAPI {
 		}
 
 		// write chunk data to bundle file
-		$bundleFile = fopen($bundle->getBundleFilename(), "a");
+		$bundleFile = fopen($bundle->getBundleFileName(), "a");
 		fseek($bundleFile, $offset);
 		fwrite($bundleFile, $data);
 		fclose($bundleFile);
@@ -71,7 +71,7 @@ class HgResumeAPI {
 		// for the final chunk; assemble the bundle and apply the bundle
 		if ($bundleSize == $offset + $dataSize) {
 			try {
-				$hg->unbundle($bundle->getBundleFilename());
+				$hg->unbundle($bundle->getBundleFileName());
 				$bundle->setOffset($bundleSize);
 
 				$responseValues = array('transId' => $transId);
@@ -125,21 +125,26 @@ class HgResumeAPI {
 			return new HgResumeResponse(HgResumeResponse::NOCHANGE);
 		}
 
+		$bundleSize = 0;
 		try {
-			$pullDir = $bundle->getPullDir();
-			$filename = $bundle->getPullFilePath();
+			//$pullDir = $bundle->getPullDir();
+			$filename = $bundle->getBundleFileName();
 			if (!is_file($filename)) {
 				// this is the first pull request; make a new bundle
 				$hg->makeBundle($baseHash, $filename);
 				$bundle->setProp("tip", $hg->getTip());
 				$bundle->setProp("repoId", $repoId);
 			}
+			// the bundle file may not be completely finished writing at this time
+			// but currently we don't see any reason to wait until the bundle
+			// has finished being created
+			$bundleSize = filesize($filename);
+
 		} catch (Exception $e) {
 			$response = array('Error' => substr($e->getMessage(), 0, 1000));
 			return new HgResumeResponse(HgResumeResponse::FAIL, $response);
 		}
 
-		$bundleSize = filesize($filename);
 
 		$actualChunkSize = 0;
 		$data = "";
@@ -198,7 +203,7 @@ class HgResumeAPI {
 	function finishPushBundle($transId) {
 		//return; // for testing only - remove me
 		$bundle = new BundleHelper($transId);
-		if ($bundle->cleanUpPush()) {
+		if ($bundle->cleanUpFiles()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
 		} else {
 			return new HgResumeResponse(HgResumeResponse::FAIL);
@@ -211,14 +216,14 @@ class HgResumeAPI {
 			$repoPath = $this->RepoBasePath . "/" . $bundle->getProp("repoId");
 			if (is_dir($repoPath)) { // a redundant check (sort of) to prevent tests from throwing that recycle the same transid
 				$hg = new HgRunner($repoPath);
-				// check that the repo has not been updated, since we a pull was initiated
+				// check that the repo has not been updated, since a pull was started
 				if ($bundle->getProp("tip") != $hg->getTip()) {
-					$bundle->cleanUpPull();
+					$bundle->cleanUpFiles();
 					return new HgResumeResponse(HgResumeResponse::RESET);
 				}
 			}
 		}
-		if ($bundle->cleanUpPull()) {
+		if ($bundle->cleanUpFiles()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
 		}
 		return new HgResumeResponse(HgResumeResponse::FAIL);

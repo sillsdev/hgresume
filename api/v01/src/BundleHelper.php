@@ -12,23 +12,7 @@ class BundleHelper {
 		$this->basePath = CACHE_PATH;
 	}
 
-	function getAssemblyDir() {
-		$path = "{$this->basePath}/{$this->transId}-assembly";
-		if (!is_dir($path)) {
-			if (!mkdir($path, 0755, true)) {
-				throw new Exception("Failed to create bundle storage dir: $path");
-			}
-		}
-		return $path;
-	}
-
-	function getPullFilePath() {
-		$filename = "{$this->transId}.bundle";
-		$path = $this->getPullDir();
-		return "$path/$filename";
-	}
-
-	function getPullDir() {
+	private function getBundleDir() {
 		$path = "{$this->basePath}";
 		if (!is_dir($path)) {
 			if (!mkdir($path, 0755, true)) {
@@ -38,32 +22,26 @@ class BundleHelper {
 		return $path;
 	}
 
-	function cleanUpPush() {
-		$path = $this->getAssemblyDir();
-		chdir($path);
-		// delete all files in path
-		array_map('unlink', glob("*.chunk"));
-		if (file_exists('bundle')) {
-			unlink('bundle');
+	function cleanUpFiles() {
+		if (file_exists($this->getBundleFileName())) {
+			unlink($this->getBundleFileName());
 		}
-		if (file_exists('metadata')) {
-			unlink('metadata');
+		if (file_exists($this->getMetaDataFileName())) {
+			unlink($this->getMetaDataFileName());
 		}
-		return rmdir($path);
+		return true;
 	}
 
-	function cleanUpPull() {
-		$path = $this->getPullDir();
-		$bundleFile = $this->getPullFilePath();
-		chdir($path);
-		if (file_exists($bundleFile)) {
-			unlink($bundleFile);
-		}
-		return !is_file($bundleFile);
+	function getBundleFileName() {
+		$filename = "{$this->transId}.bundle";
+		$path = $this->getBundleDir();
+		return "$path/$filename";
 	}
 
-	function getBundleFilename() {
-		return $this->getAssemblyDir() . "/bundle";
+	private function getMetaDataFileName() {
+		$filename = "{$this->transId}.metadata";
+		$path = $this->getBundleDir();
+		return "$path/$filename";
 	}
 
 	static function validateAlphaNumeric($str) {
@@ -95,7 +73,7 @@ class BundleHelper {
 	}
 
 	private function getMetadata() {
-		$filename = $this->getAssemblyDir() . "/metadata";
+		$filename = $this->getMetaDataFileName();
 		if (file_exists($filename)) {
 			return unserialize(file_get_contents($filename));
 		} else {
@@ -104,13 +82,12 @@ class BundleHelper {
 	}
 
 	private function setMetadata($arr) {
-		$filename = $this->getAssemblyDir() . "/metadata";
-		file_put_contents($filename, serialize($arr));
+		file_put_contents($this->getMetaDataFileName(), serialize($arr));
 	}
 
 	function getProp($key) {
 		$metadata = $this->getMetadata();
-		if ($metadata[$key]) {
+		if (array_key_exists($key, $metadata)) {
 			return $metadata[$key];
 		} else {
 			return "";

@@ -183,10 +183,9 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		}
 	}
 
-
-
-
-
+//	function testPushBundleChunk_InitializedRepoWithZeroChangesets_BundleSuccessfullyApplied() {
+//		throw new Exception("not implemented", "1");
+//	}
 
 
 
