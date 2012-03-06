@@ -136,11 +136,11 @@ class TestOfHgRunner extends UnitTestCase {
 		$this->assertEqual($hg->getRevisions(2,2), array_slice($revisions, 2, 2));
 	}
 
-//	function testGetRevisions_InitializedRepoWIthZeroCHangesets_ReturnsZero() {
-//		$this->testEnvironment->makeRepo(TestPath . "/data/emptyHgRepo.zip");
-//		$hg = new HgRunner($this->testEnvironment->Path);
-//		$this->assertEqual($hg->getRevisions(0,1), array("0"));
-//	}
+	function testGetRevisions_InitializedRepoWIthZeroCHangesets_ReturnsZero() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/emptyHgRepo.zip");
+		$hg = new HgRunner($this->testEnvironment->Path);
+		$this->assertEqual($hg->getRevisions(0,1), array("0"));
+	}
 
 	function testAddAndCheckInFile_AddFile_TipIsDifferent() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");

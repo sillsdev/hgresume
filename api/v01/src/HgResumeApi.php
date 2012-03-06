@@ -13,7 +13,7 @@ class HgResumeAPI {
 		$this->RepoBasePath = $repoPath;
 	}
 
-	function pushBundleChunk($repoId, $baseHash, $bundleSize, $offset, $data, $transId) {
+	function pushBundleChunk($repoId, $bundleSize, $offset, $data, $transId) {
 		$availability = $this->isAvailable();
 		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
 			return $availability;
@@ -43,10 +43,6 @@ class HgResumeAPI {
 		// $bundleSize
 		if (intval($bundleSize) < 0) {
 			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'negative bundle size'));
-		}
-		// $baseHash
-		if (!$hg->isValidBase($baseHash)) {
-			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid baseHash'));
 		}
 
 		$bundle = new BundleHelper($transId);

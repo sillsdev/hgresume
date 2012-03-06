@@ -74,10 +74,13 @@ class HgRunner {
 			throw new Exception("quantity parameter much be larger than 0");
 		}
 		chdir($this->repoPath);
-		$template = '{node|short}\n';
-		$cmd = "hg log -b default --template $template";
-		exec(escapeshellcmd($cmd), $output, $returnval);
-		if ($returnval != 0) {
+		$cmd = 'hg log --template "{node|short}\n"';
+		exec($cmd, $output, $returnval);
+		if (count($output) == 0) {
+			exec('hg tip --template "{rev}\n"', $output2, $returnval);
+			if (count($output2) == 1 and $output2[0] == "-1") {
+				return array("0");
+			}
 			throw new Exception("command '$cmd' failed!\n");
 		}
 		return array_slice($output, $offset, $quantity);
