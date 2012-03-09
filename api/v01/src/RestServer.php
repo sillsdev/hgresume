@@ -142,6 +142,10 @@ class RestServer {
 				$httpcode = "304 Not Modified";
 				$codeString = 'NOCHANGE';
 				break;
+			case HgResumeResponse::NOTAVAILABLE:
+				$httpcode = "503 Service Unavailable";
+				$codeString = 'NOTAVAILABLE';
+				break;
 			default:
 				throw new Exception("Unknown response code {$response->Code}");
 				break;
