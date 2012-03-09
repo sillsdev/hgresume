@@ -235,6 +235,16 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);
 	}
 
+	function testPullBundleChunk_OffsetGreaterThanZeroAndNoBundleCreated_ResetResponse() {
+		$offset = 50;
+		$chunkSize = 50;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
+		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		$this->api->finishPullBundle('id123'); // reset things on server
+		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize, 'id123');
+		$this->assertEqual(HgResumeResponse::RESET, $response->Code);
+	}
+
 	function testPullBundleChunk_OffsetEqualToBundleSize_SuccessCodeWithZeroChunkSize() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
@@ -246,22 +256,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 		$this->assertEqual(0, $response->Values['chunkSize']);
 		$this->assertEqual("", $response->Content);
-	}
-
-	function testPullBundleChunk_MiddleOffset_ValidData() {
-		$offset = 100;
-		$chunkSize = 100;
-		$transId = 'id123';
-		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
-		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
-		$this->api->finishPullBundle($transId); // reset things on server
-		$response = $this->api->pullBundleChunk('sampleHgRepo2', $hash, $offset, $chunkSize, $transId);
-		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
-		$wholeBundle = file_get_contents(TestPath . "/data/sample.bundle");
-		$expectedChunkData = mb_substr($wholeBundle, $offset, $chunkSize, "8bit");
-		$this->assertEqual($chunkSize, $response->Values['chunkSize']);
-		$this->assertEqual($transId, $response->Values['transId']);
-		$this->assertEqual(mb_strlen($wholeBundle, "8bit"), $response->Values['bundleSize']);
 	}
 
 	function testPullBundleChunk_PullUntilFinished_AssembledBundleIsValid() {

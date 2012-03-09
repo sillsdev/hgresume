@@ -122,10 +122,12 @@ class HgResumeAPI {
 		}
 
 		$bundleSize = 0;
+		$bundleFileWasCreated = false;
 		try {
 			//$pullDir = $bundle->getPullDir();
 			$filename = $bundle->getBundleFileName();
 			if (!is_file($filename)) {
+				$bundleFileWasCreated = true;
 				// this is the first pull request; make a new bundle
 				$hg->makeBundle($baseHash, $filename);
 				$bundle->setProp("tip", $hg->getTip());
@@ -141,6 +143,11 @@ class HgResumeAPI {
 			return new HgResumeResponse(HgResumeResponse::FAIL, $response);
 		}
 
+		// if the client requests an offset greater than 0 but less than the bundleSize, but the bundle needed to be created on this request,
+		// send the RESET response since the server's bundle cache has aparently expired.
+		if ($offset > 0 and $offset < $bundleSize and $bundleFileWasCreated) {
+			return new HgResumeResponse(HgResumeResponse::RESET);
+		}
 
 		$actualChunkSize = 0;
 		$data = "";
