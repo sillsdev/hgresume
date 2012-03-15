@@ -79,14 +79,10 @@ class RestServer {
 		array_push($headers, "X-HgR-Version: " . $response->Version);
 		array_push($headers, "X-HgR-Status: $hgrStatus");
 
-		// errormsg is a temporary debugging hack that should be removed ASAP
-		//$errormsg = "";
 		if (!is_null($response->Values)) {
 			foreach ($response->Values as $key => $value) {
-				//$errormsg .= "$key : $value, ";
 				array_push($headers, "X-HgR-" . ucfirst($key) . ": $value");
 			}
-			//error_log($errormsg . "\n", 3, "/tmp/cjh8");
 		}
 
 

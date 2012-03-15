@@ -170,6 +170,7 @@ class HgResumeAPI {
 		return $response;
 	}
 
+	// not currently used in C# client
 	function getTip($repoId) {
 		$availability = $this->isAvailable();
 		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
