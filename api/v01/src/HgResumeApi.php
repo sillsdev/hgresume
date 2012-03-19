@@ -5,12 +5,13 @@ require_once("HgRunner.php");
 require_once("BundleHelper.php");
 
 class HgResumeAPI {
-	var $RepoBasePath;
+	var $RepoBasePaths;
 
 	// Note: API_VERSION is defined in config.php
 
-	function __construct($repoPath = "/var/vcs/public") {
-		$this->RepoBasePath = $repoPath;
+	function __construct($searchPaths) {
+		// $searchPaths is an array of paths
+		$this->RepoBasePaths = $searchPaths;
 	}
 
 	function pushBundleChunk($repoId, $bundleSize, $offset, $data, $transId) {
@@ -21,10 +22,11 @@ class HgResumeAPI {
 
 		/********* Parameter validation and checking ************/
 		// $repoId
-		if (trim($repoId) == '' or !is_dir($this->RepoBasePath . "/$repoId")) {
+		$repoPath = $this->getRepoPath($repoId);
+		if (!$repoPath) {
 			return new HgResumeResponse(HgResumeResponse::UNKNOWNID);
 		}
-		$hg = new HgRunner($this->RepoBasePath . "/$repoId");
+		$hg = new HgRunner($repoPath);
 
 		// $offset
 		if ($offset < 0 or $offset >= $bundleSize) {
@@ -99,11 +101,12 @@ class HgResumeAPI {
 
 		/********* Parameter validation and checking ************/
 		// $repoId
-		if (trim($repoId) == '' or !is_dir($this->RepoBasePath . "/$repoId")) {
+		$repoPath = $this->getRepoPath($repoId);
+		if (!$repoPath) {
 			return new HgResumeResponse(HgResumeResponse::UNKNOWNID);
 		}
 
-		$hg = new HgRunner($this->RepoBasePath . "/$repoId");
+		$hg = new HgRunner($repoPath);
 		$bundle = new BundleHelper($transId);
 
 		// $offset
@@ -177,10 +180,16 @@ class HgResumeAPI {
 			return $availability;
 		}
 		try {
-			$hg = new HgRunner("{$this->RepoBasePath}/$repoId");
-			$revisionList = $hg->getRevisions(0, 1);
-			$response = array('Tip' => $revisionList[0]);
-			$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, $response);
+			$repoPath = $this->getRepoPath($repoId);
+			if ($repoPath) {
+				$hg = new HgRunner($repoPath);
+				$revisionList = $hg->getRevisions(0,1);
+				$response = array('Tip' => $revisionList[0]);
+				$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, $response);
+			}
+			else {
+				$hgresponse = new HgResumeResponse(HgResumeResponse::UNKNOWNID);
+			}
 		} catch (Exception $e) {
 			$response = array('Error' => substr($e->getMessage(), 0, 1000));
 			$hgresponse = new HgResumeResponse(HgResumeResponse::FAIL, $response);
@@ -194,9 +203,15 @@ class HgResumeAPI {
 			return $availability;
 		}
 		try {
-			$hg = new HgRunner("{$this->RepoBasePath}/$repoId");
-			$revisionList = $hg->getRevisions($offset, $quantity);
-			$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, array(), implode("|",$revisionList));
+			$repoPath = $this->getRepoPath($repoId);
+			if ($repoPath) {
+				$hg = new HgRunner($repoPath);
+				$revisionList = $hg->getRevisions($offset, $quantity);
+				$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, array(), implode("|",$revisionList));
+			}
+			else {
+				$hgresponse = new HgResumeResponse(HgResumeResponse::UNKNOWNID);
+			}
 		} catch (Exception $e) {
 			$response = array('Error' => substr($e->getMessage(), 0, 1000));
 			$hgresponse = new HgResumeResponse(HgResumeResponse::FAIL, $response);
@@ -217,7 +232,7 @@ class HgResumeAPI {
 	function finishPullBundle($transId) {
 		$bundle = new BundleHelper($transId);
 		if ($bundle->hasProp("tip") and $bundle->hasProp("repoId")) {
-			$repoPath = $this->RepoBasePath . "/" . $bundle->getProp("repoId");
+			$repoPath = $this->RepoBasePaths . "/" . $bundle->getProp("repoId");
 			if (is_dir($repoPath)) { // a redundant check (sort of) to prevent tests from throwing that recycle the same transid
 				$hg = new HgRunner($repoPath);
 				// check that the repo has not been updated, since a pull was started
@@ -237,17 +252,27 @@ class HgResumeAPI {
 		if ($this->isAvailableAsBool()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
 		}
-		$maintenanceFilePath = $this->RepoBasePath . "/maintenance_message.txt";
+		$maintenanceFilePath = $this->RepoBasePaths . "/maintenance_message.txt";
 		$message = file_get_contents($maintenanceFilePath);
 		return new HgResumeResponse(HgResumeResponse::NOTAVAILABLE, array(), $message);
 	}
 
 	private function isAvailableAsBool() {
-		$maintenanceFilePath = $this->RepoBasePath . "/maintenance_message.txt";
+		$maintenanceFilePath = $this->RepoBasePaths . "/maintenance_message.txt";
 		if (file_exists($maintenanceFilePath) && filesize($maintenanceFilePath) > 0) {
 			return false;
 		}
 		return true;
+	}
+
+	private function getRepoPath($repoId) {
+		foreach ($this->RepoBasePaths as $basePath) {
+			$possibleRepoPath = "$basePath/$repoId";
+			if (is_dir($possibleRepoPath)) {
+				return $possibleRepoPath;
+			}
+		}
+		return "";
 	}
 }
 

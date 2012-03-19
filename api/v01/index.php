@@ -5,7 +5,7 @@ require_once('src/RestServer.php');
 require_once('src/HgResumeApi.php');
 
 //$repoPath = sys_get_temp_dir() . "/hgresume_repoTestEnvironment";
-$api = new HgResumeAPI(REPOPATH);
+$api = new HgResumeAPI($repoSearchPaths);
 
 // second param is debug mode
 $restServer = new RestServer($api, false);

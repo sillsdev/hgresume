@@ -6,6 +6,8 @@ define('SourcePath', $rootPath);
 
 define("API_VERSION", 1);
 define('CACHE_PATH', "/var/cache/hgresume");
-define('REPOPATH', "/var/vcs/public");
+
+$repoSearchPaths = array("/var/vcs/public", "/var/vcs/private");
+//$repoSearchPaths = array("/var/vcs/public");
 
 ?>
