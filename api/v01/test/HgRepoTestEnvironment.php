@@ -36,6 +36,10 @@ class HgRepoTestEnvironment {
 
 	function dispose() {
 		recursiveDelete($this->BasePath);
+		$maintFile = SourcePath . "/maintenance_message.txt";
+		if (file_exists($maintFile)) {
+			unlink($maintFile);
+		}
 	}
 
 	function makeRepo($zipfile) {

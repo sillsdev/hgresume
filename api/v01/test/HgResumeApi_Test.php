@@ -28,10 +28,10 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($response->Values['Tip'], trim(file_get_contents(TestPath . "/data/sample.bundle.hash")));
 	}
 
-	function testGetTip_IdNotExistsExists_ReturnsFailCode() {
+	function testGetTip_IdNotExists_ReturnsFailCode() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$response = $this->api->getTip('invalidid');
-		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
+		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
 
 	// finishPullBundle is a wrapper for BundleHelper->cleanUpPull, and that is already tested
@@ -318,14 +318,14 @@ class TestOfHgResumeAPI extends UnitTestCase {
 	}
 
 	function testIsAvailable_noMessageFile_SuccessCode() {
-		$messageFilePath = $this->api->RepoBasePath . "/maintenance_message.txt";
+		$messageFilePath = SourcePath . "/maintenance_message.txt";
 		$this->assertFalse(file_exists($messageFilePath));
 		$response = $this->api->isAvailable();
 		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 	}
 
 	function testIsAvailable_MessageFileExists_FailCodeWithMessage() {
-		$messageFilePath = $this->api->RepoBasePath . "/maintenance_message.txt";
+		$messageFilePath = SourcePath . "/maintenance_message.txt";
 		$message = "Server is down for maintenance.";
 		file_put_contents($messageFilePath, $message);
 		$this->assertTrue(file_exists($messageFilePath));

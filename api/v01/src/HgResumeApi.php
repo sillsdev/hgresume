@@ -11,7 +11,12 @@ class HgResumeAPI {
 
 	function __construct($searchPaths) {
 		// $searchPaths is an array of paths
-		$this->RepoBasePaths = $searchPaths;
+		if (is_array($searchPaths)) {
+			$this->RepoBasePaths = $searchPaths;
+		}
+		else {
+			$this->RepoBasePaths = array($searchPaths);
+		}
 	}
 
 	function pushBundleChunk($repoId, $bundleSize, $offset, $data, $transId) {
@@ -232,7 +237,7 @@ class HgResumeAPI {
 	function finishPullBundle($transId) {
 		$bundle = new BundleHelper($transId);
 		if ($bundle->hasProp("tip") and $bundle->hasProp("repoId")) {
-			$repoPath = $this->RepoBasePaths . "/" . $bundle->getProp("repoId");
+			$repoPath = $this->getRepoPath($bundle->getProp("repoId"));
 			if (is_dir($repoPath)) { // a redundant check (sort of) to prevent tests from throwing that recycle the same transid
 				$hg = new HgRunner($repoPath);
 				// check that the repo has not been updated, since a pull was started
@@ -252,24 +257,29 @@ class HgResumeAPI {
 		if ($this->isAvailableAsBool()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
 		}
-		$maintenanceFilePath = $this->RepoBasePaths . "/maintenance_message.txt";
-		$message = file_get_contents($maintenanceFilePath);
+		$message = file_get_contents($this->getMaintenanceFilePath());
 		return new HgResumeResponse(HgResumeResponse::NOTAVAILABLE, array(), $message);
 	}
 
 	private function isAvailableAsBool() {
-		$maintenanceFilePath = $this->RepoBasePaths . "/maintenance_message.txt";
-		if (file_exists($maintenanceFilePath) && filesize($maintenanceFilePath) > 0) {
+		$file = $this->getMaintenanceFilePath();
+		if (file_exists($file) && filesize($file) > 0) {
 			return false;
 		}
 		return true;
 	}
 
+	private function getMaintenanceFilePath() {
+		return SourcePath . "/maintenance_message.txt";
+	}
+
 	private function getRepoPath($repoId) {
-		foreach ($this->RepoBasePaths as $basePath) {
-			$possibleRepoPath = "$basePath/$repoId";
-			if (is_dir($possibleRepoPath)) {
-				return $possibleRepoPath;
+		if ($repoId) {
+			foreach ($this->RepoBasePaths as $basePath) {
+				$possibleRepoPath = "$basePath/$repoId";
+				if (is_dir($possibleRepoPath)) {
+					return $possibleRepoPath;
+				}
 			}
 		}
 		return "";
