@@ -90,11 +90,18 @@ class HgRunner {
 		if ($hash == "0") { // special case indicating revision 0
 			return true;
 		}
-		chdir($this->repoPath);
-		$cmd = "hg update -r $hash";
-		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
-		if ($returnval != 0) {
-			return false;
+		$foundHash = false;
+		$q = 200;
+		$i = 0;
+		while(!$foundHash) {
+			$revisions = $this->getRevisions($i, $q);
+			if (count($revisions) == 0) {
+				return false;
+			}
+			if (in_array($hash, $revisions)) {
+				$foundHash = true;
+			}
+			$i += $q;
 		}
 		return true;
 	}
