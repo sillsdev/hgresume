@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="hgresume-server" default="test" basedir=".">
+
+	<property name="application.name" value="hgresume-server" />
+
+	<property name="output.dir" value="output" />
+
+	<target name="prepare">
+		<mkdir dir="${output.dir}" />
+	</target>
+
+	<target name="clean">
+		<delete dir="${output.dir}" />
+	</target>
+
+	<target name="test" depends="prepare">
+		<echo>##teamcity[importData type='junit' path='api/v01/${output.dir}/AllTests.xml']</echo>
+		<exec executable="php" dir="test" output="${output.dir}/AllTests.xml" failonerror="true">
+			<arg line="AllTests.php" />
+			<arg value="-j" />
+		</exec>
+	</target>
+</project>
