@@ -177,17 +177,9 @@ class HgResumeAPI {
 					$response->Values = array('Error' => substr(file_get_contents($bundleTimeFile), 0, 1000));
 				}
 			} else { // bundle creation is in progress
-				if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
-					$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
-					$response->Values = array(
-							'bundleSize' => filesize($bundleFilename),
-							'chunkSize' => mb_strlen($data, "8bit"),
-							'transId' => $transId);
-					$response->Content = $data;
-
-				} else {
-					sleep(4);
-					// try a second time to get a chunk below bundle size
+				// loop indefinitely until we can return a chunk of data
+				// see V02 for a smarter way to handle this using the INPROGRESS response
+				while (true) {
 					if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
 						$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
 						$response->Values = array(
@@ -195,9 +187,9 @@ class HgResumeAPI {
 								'chunkSize' => mb_strlen($data, "8bit"),
 								'transId' => $transId);
 						$response->Content = $data;
-					} else {
-						$response = new HgResumeResponse(HgResumeResponse::INPROGRESS);
+						break;
 					}
+					sleep(1);
 				}
 			}
 			return $response;
