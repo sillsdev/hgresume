@@ -46,21 +46,34 @@ class HgRunner {
 		exec(escapeshellcmd($cmd), $output, $returnval);
 	}
 
-	function makeBundle($baseHash, $filename) {
+	function makeBundle($baseHash, $filename, $finishFilename) {
+		if ($filename == $finishFilename) {
+			throw new Exception("HgRunner->makeBundle : bundle file and finish file cannot be equal");
+		}
 		chdir($this->repoPath);
 		if ($baseHash == "0") {
 			$cmd = "hg bundle --all $filename";
 		} else {
 			$cmd = "hg bundle --base $baseHash $filename";
 		}
-		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
-		if ($returnval == 1) {
-			// no changesets available for that $baseHash
-			// make a 0 byte bundle file
-			exec(escapeshellcmd("touch $filename"));
+		$cmd = escapeshellcmd($cmd);
+		// The following command will redirect all output (include output of the time command) to $finishFilename
+		// Additionally, the trailing ampersand makes the hg bundle command run in the background
 
-		} elseif ($returnval != 0) {
-			throw new Exception("retval is $returnval; command '$cmd' failed!\n");
+		// we touch the $finishFilename before execution to indicate that the bundle making process has started
+		$cmd = "touch $finishFilename; /usr/bin/time --append --output=$finishFilename --format=\"makebundleprocess: %E\" $cmd > $finishFilename 2>&1 &";
+		exec($cmd, $output, $returnval);
+	}
+
+
+	// helper function, mostly for tests
+	function makeBundleAndWaitUntilFinished($baseHash, $filename, $finishFilename) {
+		$this->makeBundle($baseHash, $filename, $finishFilename);
+		while (true) {
+			if (BundleHelper::isBundleFinished($finishFilename)) {
+				break;
+			}
+			sleep(.1);
 		}
 	}
 

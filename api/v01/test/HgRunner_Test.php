@@ -3,6 +3,7 @@ require_once(dirname(__FILE__) . '/testconfig.php');
 require_once(SimpleTestPath . '/autorun.php');
 require_once("HgRepoTestEnvironment.php");
 require_once(SourcePath . "/HgRunner.php");
+require_once(SourcePath . "/BundleHelper.php");
 
 class TestOfHgRunner extends UnitTestCase {
 
@@ -15,6 +16,8 @@ class TestOfHgRunner extends UnitTestCase {
 	function tearDown() {
 		$this->testEnvironment->dispose();
 	}
+
+
 
 	function testUnbundle_BundleFileExists_BundleIsApplied() {
 		$bundleFile = TestPath . "/data/sample.bundle";
@@ -40,6 +43,7 @@ class TestOfHgRunner extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
 		$repoPath = $this->testEnvironment->Path;
 		$bundleFile = "$repoPath/bundle";
+		$bundleFinishFile = "$repoPath/bundle.finished";
 		$successFile = "$repoPath/bundlesuccess.txt";
 
 		// precondition
@@ -49,7 +53,8 @@ class TestOfHgRunner extends UnitTestCase {
 		// compare generated bundle with what we expect
 		$hg = new HgRunner($repoPath);
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
-		$hg->makeBundle($hash, $bundleFile);
+		$hg->makeBundleAndWaitUntilFinished($hash, $bundleFile, $bundleFinishFile);
+		$this->assertTrue(BundleHelper::isBundleFinishedAndValid($bundleFinishFile));
 		$this->assertEqual(filesize($bundleFile), filesize($referenceBundleFile));
 	}
 
@@ -58,21 +63,21 @@ class TestOfHgRunner extends UnitTestCase {
 		$hg = new HgRunner("somerandompath");
 	}
 
-	function testMakeBundle_BadBaseHash_Throws() {
+	function testMakeBundle_BadBaseHash_InvalidBundle() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
-		$this->expectException();
-		$hg->makeBundle('whateverhash', "$repoPath/bundle");
+		$timeFile = "$repoPath/finishFile";
+		$hg->makeBundleAndWaitUntilFinished('whateverhash', "$repoPath/bundle", $timeFile);
+		$this->assertFalse(BundleHelper::isBundleFinishedAndValid($timeFile));
 	}
 
-	function testMakeBundle_noBundleFile_throws() {
+	function testMakeBundle_noBundleFile_isValidBundle() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
-		$this->expectException();
-		$hg->makeBundle($hash, '');
+		$hg->makeBundleAndWaitUntilFinished($hash, '', 'finished');
 	}
 
 	function testUnBundle_noBundleFile_throws() {

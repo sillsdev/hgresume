@@ -55,6 +55,12 @@ class HgResumeResponse {
 	// HTTP 503 Service Unavailable
 	const NOTAVAILABLE = 8;
 
+	/* INPROGRESS
+	 * The server is has begun creating a bundle but could not yet return a bundle chunk but that
+	 * data is not yet written to disk.  Used only by pullBundleChunk */
+	// HTTP 202 Accepted
+	const INPROGRESS = 9;
+
 	public $Code;
 	public $Values;
 	public $Content;
