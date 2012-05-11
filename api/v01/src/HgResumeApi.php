@@ -179,7 +179,7 @@ class HgResumeAPI {
 			} else { // bundle creation is in progress
 				// loop indefinitely until we can return a chunk of data
 				// see V02 for a smarter way to handle this using the INPROGRESS response
-				while (true) {
+				for ($i = 0; $i < 60; $i++) {
 					clearstatcache();
 					if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
 						$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
@@ -192,6 +192,7 @@ class HgResumeAPI {
 					}
 					sleep(1);
 				}
+				throw new Exception("waited 60 seconds and still cannot canGetChunkBelowBundleSize");
 			}
 			return $response;
 

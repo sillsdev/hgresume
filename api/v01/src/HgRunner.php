@@ -69,12 +69,13 @@ class HgRunner {
 	// helper function, mostly for tests
 	function makeBundleAndWaitUntilFinished($baseHash, $filename, $finishFilename) {
 		$this->makeBundle($baseHash, $filename, $finishFilename);
-		while (true) {
+		for ($i = 0; $i < 600; $i++) {
 			if (BundleHelper::isBundleFinished($finishFilename)) {
-				break;
+				return;
 			}
-			sleep(.1);
+			usleep(100000); // .1 seconds
 		}
+		throw new Exception("makeBundleAndWaitUntilFinished failed: waited 60 seconds and still no bundle!");
 	}
 
 	function getTip() {
