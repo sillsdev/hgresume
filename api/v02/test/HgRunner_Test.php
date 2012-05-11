@@ -17,7 +17,9 @@ class TestOfHgRunner extends UnitTestCase {
 		$this->testEnvironment->dispose();
 	}
 
-
+	function testPrequisite_usrbintime_fileexists() {
+		$this->assertTrue(file_exists("/usr/bin/time"));
+	}
 
 	function testUnbundle_BundleFileExists_BundleIsApplied() {
 		$bundleFile = TestPath . "/data/sample.bundle";
