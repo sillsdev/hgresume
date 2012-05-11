@@ -180,6 +180,7 @@ class HgResumeAPI {
 				// loop indefinitely until we can return a chunk of data
 				// see V02 for a smarter way to handle this using the INPROGRESS response
 				while (true) {
+					clearstatcache();
 					if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
 						$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
 						$response->Values = array(

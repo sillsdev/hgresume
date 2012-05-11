@@ -177,6 +177,7 @@ class HgResumeAPI {
 					$response->Values = array('Error' => substr(file_get_contents($bundleTimeFile), 0, 1000));
 				}
 			} else { // bundle creation is in progress
+				clearstatcache(); // clear filesize() cache
 				if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
 					$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
 					$response->Values = array(
@@ -187,6 +188,7 @@ class HgResumeAPI {
 
 				} else {
 					sleep(4);
+					clearstatcache(); // clear filesize() cache
 					// try a second time to get a chunk below bundle size
 					if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
 						$data = $this->getChunk($bundleFilename, $chunkSize, $offset);

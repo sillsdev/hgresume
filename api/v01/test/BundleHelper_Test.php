@@ -7,7 +7,8 @@ require_once(SourcePath . "/BundleHelper.php");
 class TestOfBundleHelper extends UnitTestCase {
 
 	function testCleanUpFiles_BundleFileExists_DeletesBundleFile() {
-		$bundle = new BundleHelper("id123");
+		$bundle = new BundleHelper(__FUNCTION__);
+		$bundle->cleanUpFiles();
 		$bundleFilename = $bundle->getBundleFileName();
 		file_put_contents($bundleFilename, "bundle data");
 		$bundle->cleanUpFiles();
@@ -24,22 +25,25 @@ class TestOfBundleHelper extends UnitTestCase {
 	}
 
 	function testGetOffset_Unset_ReturnsZero() {
-		$transId = "id123";
+		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
+		$bundle->cleanUpFiles();
 		$this->assertEqual(0, $bundle->getOffset());
 	}
 
 	function testSetGetOffset_SetThenGet_GetReturnsValueThatWasSet() {
-		$transId = "id123";
+		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
+		$bundle->cleanUpFiles();
 		$sow = 5023;
 		$bundle->setOffset($sow);
 		$this->assertEqual($sow, $bundle->getOffset());
 	}
 
 	function testSetGetHasProp_SetMultipleProps_GetPropsOkAndVerifyHasPropsOk() {
-		$transId = "id123";
+		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
+		$bundle->cleanUpFiles();
 		$this->assertFalse($bundle->hasProp("tip"));
 		$bundle->setProp("tip", "7890");
 		$this->assertTrue($bundle->hasProp("tip"));

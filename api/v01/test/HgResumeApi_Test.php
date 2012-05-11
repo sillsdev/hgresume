@@ -339,17 +339,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(HgResumeResponse::RESET, $finishResponse->Code);
 	}
 
-	function testPullBundleChunk_longMakeBundle_InProgressCode() {
-		$transId = __FUNCTION__;
-		$this->testEnvironment->makeRepo(TestPath . "/data/sampleLargeBundleHgRepo.zip");
-		$this->api->finishPullBundle($transId); // reset things on server
-
-		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', "0", 0, 50, $transId);
-		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
-		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', "0", 0, 6000000, $transId);
-		$this->assertEqual(HgResumeResponse::INPROGRESS, $response->Code);
-	}
-
 	function testPullBundleChunk_BaseHashIsZero_ReturnsEntireRepoAsBundle() {
 		$offset = 0;
 		$chunkSize = 50;
