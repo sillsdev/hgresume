@@ -59,7 +59,7 @@ class HgResumeAPI {
 		$startOfWindow = $bundle->getOffset();
 		if ($offset != $startOfWindow) { // these are usually equal.  It could be a client programming error if they are not
 			if ($dataSize + $offset <= $startOfWindow) {
-				return new HgResumeResponse(HgResumeResponse::RECEIVED, array('sow' => $startOfWindow, 'Note' => 'server already had this data'));
+				return new HgResumeResponse(HgResumeResponse::RECEIVED, array('sow' => $startOfWindow, 'Note' => 'server received duplicate data'));
 			} else {
 				return new HgResumeResponse(HgResumeResponse::FAIL, array('sow' => $startOfWindow, 'Error' => "data sent ($dataSize) with offset ($offset) falls after server's start of window ($startOfWindow)"));
 			}
