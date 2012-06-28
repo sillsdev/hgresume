@@ -1,19 +1,19 @@
 <?php
 
 class BundleHelper {
-	private $transId;
-	private $basePath;
+	private $_transactionId;
+	private $_basePath;
 
 	function __construct($id) {
 		if(!BundleHelper::validateAlphaNumeric($id)) {
 			throw new Exception("ValidationException: transId $id did not validate as alpha numeric!");
 		}
-		$this->transId = $id;
-		$this->basePath = CACHE_PATH;
+		$this->_transactionId = $id;
+		$this->_basePath = CACHE_PATH;
 	}
 
 	private function getBundleDir() {
-		$path = "{$this->basePath}";
+		$path = "{$this->_basePath}";
 		if (!is_dir($path)) {
 			if (!mkdir($path, 0755, true)) {
 				throw new Exception("Failed to create repo dir: $path");
@@ -35,10 +35,9 @@ class BundleHelper {
 		return true;
 	}
 
-
-
-
-
+	public function isLocked() {
+		return file_exists($this->getBundleTimeFileName());
+	}
 
 	function isBundleCreated() {
 		if (file_exists($this->getBundleFileName())) {
@@ -54,11 +53,12 @@ class BundleHelper {
 	}
 
 	// static helper functions
-	static function isBundleFinishedAndValid($bundleTimeFile) {
-		return BundleHelper::isBundleFinished($bundleTimeFile) and ! BundleHelper::bundleFileHasErrors($bundleTimeFile);
+	// Note: Only used by tests
+	public static function isBundleFinishedAndValid($bundleTimeFile) {
+		return BundleHelper::isBundleFinished($bundleTimeFile) && !BundleHelper::bundleFileHasErrors($bundleTimeFile);
 	}
 
-	static function isBundleFinished($bundleTimeFile) {
+	public static function isBundleFinished($bundleTimeFile) {
 		$data = file_get_contents($bundleTimeFile);
 		if (strpos($data, "makebundleprocess") !== false) {
 			return true;
@@ -66,7 +66,7 @@ class BundleHelper {
 		return false;
 	}
 
-	static function bundleFileHasErrors($bundleTimeFile) {
+	private static function bundleFileHasErrors($bundleTimeFile) {
 		$data = file_get_contents($bundleTimeFile);
 		if (strpos($data, "abort") !== false or
 			strpos($data, "invalid") !== false or
@@ -80,24 +80,20 @@ class BundleHelper {
 
 
 
-
-
-
+	public function getBundleBaseFilePath() {
+		return $this->getBundleDir() . '/' .$this->_transactionId;
+	}
 
 	function getBundleTimeFileName() {
-		return $this->getBundleFileName() . ".isFinished";
+		return $this->getBundleBaseFilePath() . ".isFinished";
 	}
 
 	function getBundleFileName() {
-		$filename = "{$this->transId}.bundle";
-		$path = $this->getBundleDir();
-		return "$path/$filename";
+		return $this->getBundleBaseFilePath() . '.bundle';
 	}
 
 	private function getMetaDataFileName() {
-		$filename = "{$this->transId}.metadata";
-		$path = $this->getBundleDir();
-		return "$path/$filename";
+		return $this->getBundleBaseFilePath() . '.metadata';
 	}
 
 	static function validateAlphaNumeric($str) {

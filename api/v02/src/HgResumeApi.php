@@ -85,7 +85,7 @@ class HgResumeAPI {
 				$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
 				$responseValues['transId'] = $transId;
 				$response = new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
-				$this->finishPushBundle($transId); // clean up bundle assembly cache
+				//$this->finishPushBundle($transId); // clean up bundle assembly cache
 			}
 			return $response;
 		} else {
@@ -118,6 +118,7 @@ class HgResumeAPI {
 
 			$hg = new HgRunner($repoPath);
 			$bundle = new BundleHelper($transId);
+			$asyncRunner = new AsyncRunner($bundle->getBaseFilePath());
 
 			// $offset
 			if ($offset < 0) {
@@ -137,14 +138,14 @@ class HgResumeAPI {
 			$bundleFilename = $bundle->getBundleFileName();
 			$bundleTimeFile = $bundle->getBundleTimeFileName();
 
-			if (!is_file($bundleTimeFile)) {
+			if (!$asyncRunner->isRunning()) {
 				// this is the first pull request; make a new bundle
 
 				if ($waitForBundleToFinish) {
-					$hg->makeBundleAndWaitUntilFinished($baseHash, $bundleFilename, $bundleTimeFile);
+					$hg->makeBundleAndWaitUntilFinished($baseHash, $asyncRunner);
 
 				} else {
-					$hg->makeBundle($baseHash, $bundleFilename, $bundleTimeFile);
+					$hg->makeBundle($baseHash, $asyncRunner);
 				}
 				$bundleCreatedInThisExecution = true;
 			}
