@@ -44,20 +44,18 @@ class TestOfHgRunner extends UnitTestCase {
 		$referenceBundleFile = TestPath . "/data/sample.bundle";
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo2.zip");
 		$repoPath = $this->testEnvironment->Path;
-		$bundleFile = "$repoPath/bundle";
-		$bundleFinishFile = "$repoPath/bundle.finished";
+		$bundleFilePath = "$repoPath/bundle";
 		$successFile = "$repoPath/bundlesuccess.txt";
 
 		// precondition
 		$this->assertTrue(file_exists($successFile));
-		$this->assertFalse(file_exists($bundleFile));
+		$this->assertFalse(file_exists($bundleFilePath));
 
 		// compare generated bundle with what we expect
 		$hg = new HgRunner($repoPath);
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
-		$hg->makeBundleAndWaitUntilFinished($hash, $bundleFile, $bundleFinishFile);
-		$this->assertTrue(BundleHelper::isBundleFinishedAndValid($bundleFinishFile));
-		$this->assertEqual(filesize($bundleFile), filesize($referenceBundleFile));
+		$hg->makeBundleAndWaitUntilFinished($hash, $bundleFilePath, new AsyncRunner($bundleFilePath));
+		$this->assertEqual(filesize($bundleFilePath), filesize($referenceBundleFile));
 	}
 
 	function testMakeBundle_RepoDoesNotExist_Throws() {
@@ -69,20 +67,22 @@ class TestOfHgRunner extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
-		$timeFile = "$repoPath/finishFile";
-		$hg->makeBundleAndWaitUntilFinished('whateverhash', "$repoPath/bundle", $timeFile);
-		$this->assertFalse(BundleHelper::isBundleFinishedAndValid($timeFile));
+		$bundleFilePath = $repoPath . '/bundle';
+		$asyncRunner = new AsyncRunner($bundleFilePath);
+		$hg->makeBundleAndWaitUntilFinished('whateverhash', $bundleFilePath, $asyncRunner);
+		$this->assertTrue(BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput()));
 	}
-
+/*
 	function testMakeBundle_noBundleFile_isValidBundle() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
-		$hg->makeBundleAndWaitUntilFinished($hash, '', 'finished');
+		$hg->makeBundleAndWaitUntilFinished($hash, '', new AsyncRunner(''));
+		// REVIEW There are no asserts in this test CP 2012-06
 	}
-
-	function testUnBundle_noBundleFile_throws() {
+*/
+	function testUnbundle_noBundleFile_throws() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);

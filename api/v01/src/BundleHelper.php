@@ -109,9 +109,6 @@ class BundleHelper {
 		}
 	}
 
-	// TODO store metadata in an mySQL database to keep information about
-	// transaction activity
-
 	// get the offset of the data we've collected
 	function getOffset() {
 		$metadata = $this->getMetadata();

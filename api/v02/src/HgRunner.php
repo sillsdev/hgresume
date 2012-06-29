@@ -1,5 +1,7 @@
 <?php
 
+require_once('AsyncRunner.php');
+
 class HgRunner {
 	var $repoPath;
 	var $logState;
@@ -26,7 +28,8 @@ class HgRunner {
 
 	function unbundle($filepath) {
 		if (is_file($filepath)) {
-			chdir($this->repoPath);
+			chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
+			// TODO Make this async
 			$cmd = "hg unbundle $filepath";
 			$this->logEvent("cmd: $cmd");
 			exec(escapeshellcmd($cmd), $output, $returnval);
@@ -46,22 +49,31 @@ class HgRunner {
 		exec(escapeshellcmd($cmd), $output, $returnval);
 	}
 
-	function makeBundle($baseHash, $asyncRunner) {
-		chdir($this->repoPath);
+	/**
+	 * @param string $baseHash
+	 * @param string $bundleFilePath
+	 * @param AsyncRunner $asyncRunner
+	 */
+	function makeBundle($baseHash, $bundleFilePath, $asyncRunner) {
+		chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
 		if ($baseHash == "0") {
-			$cmd = "hg bundle --all $filename";
+			$cmd = "hg bundle --all $bundleFilePath";
 		} else {
-			$cmd = "hg bundle --base $baseHash $filename";
+			$cmd = "hg bundle --base $baseHash $bundleFilePath";
 		}
 		$asyncRunner->run($cmd);
 	}
 
-
-	// helper function, mostly for tests
-	function makeBundleAndWaitUntilFinished($baseHash, $filename, $finishFilename) {
-		$this->makeBundle($baseHash, $filename, $finishFilename);
+	/**
+	 * helper function, mostly for tests
+	 * @param string $baseHash
+	 * @param string $bundleFilePath
+	 * @param AsyncRunner $asyncRunner
+	 */
+	function makeBundleAndWaitUntilFinished($baseHash, $bundleFilePath, $asyncRunner) {
+		$this->makeBundle($baseHash, $bundleFilePath, $asyncRunner);
 		while (true) {
-			if (BundleHelper::isBundleFinished($finishFilename)) {
+			if ($asyncRunner->isComplete()) {
 				break;
 			}
 			usleep(1000);

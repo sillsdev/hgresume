@@ -19,13 +19,24 @@ class HgResumeAPI {
 		}
 	}
 
+	/**
+	 * Pushes a chunk of binary $data at $offset in the stream for $transId in $repoId
+	 * @param string $repoId
+	 * @param int $bundleSize
+	 * @param int $offset
+	 * @param byte[] $data
+	 * @param string $transId
+	 * @return HgResumeResponse
+	 */
 	function pushBundleChunk($repoId, $bundleSize, $offset, $data, $transId) {
 		$availability = $this->isAvailable();
 		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
 			return $availability;
 		}
 
-		/********* Parameter validation and checking ************/
+		// ------------------
+		// Check the input parameters
+		// ------------------
 		// $repoId
 		$repoPath = $this->getRepoPath($repoId);
 		if (!$repoPath) {
@@ -35,7 +46,6 @@ class HgResumeAPI {
 
 		// $offset
 		if ($offset < 0 or $offset >= $bundleSize) {
-			//invalid offset
 			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid offset'));
 		}
 		// $data
@@ -44,7 +54,6 @@ class HgResumeAPI {
 			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data sent'));
 		}
 		if ($dataSize > $bundleSize - $offset) {
-			// no data or data larger than advertised bundle size
 			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'data sent is larger than remaining bundle size'));
 		}
 		// $bundleSize
@@ -52,13 +61,17 @@ class HgResumeAPI {
 			return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'negative bundle size'));
 		}
 
+		// ------------------
+		// Good to go ...
+		// ------------------
+
 		$bundle = new BundleHelper($transId);
 
 		// if the data sent falls before the start of window, mark it as received and reply with correct startOfWindow
 		// Fail if there is overlap or a mismatch between the start of window and the data offset
 		$startOfWindow = $bundle->getOffset();
 		if ($offset != $startOfWindow) { // these are usually equal.  It could be a client programming error if they are not
-			if ($dataSize + $offset <= $startOfWindow) {
+			if ($offset < $startOfWindow) {
 				return new HgResumeResponse(HgResumeResponse::RECEIVED, array('sow' => $startOfWindow, 'Note' => 'server received duplicate data'));
 			} else {
 				return new HgResumeResponse(HgResumeResponse::FAIL, array('sow' => $startOfWindow, 'Error' => "data sent ($dataSize) with offset ($offset) falls after server's start of window ($startOfWindow)"));
@@ -71,11 +84,12 @@ class HgResumeAPI {
 		fwrite($bundleFile, $data);
 		fclose($bundleFile);
 
+		$newSow = $offset + $dataSize;
+		$bundle->setOffset($newSow);
 		// for the final chunk; assemble the bundle and apply the bundle
-		if ($bundleSize == $offset + $dataSize) {
+		if ($newSow == $bundleSize) {
 			try {
-				$hg->unbundle($bundle->getBundleFileName());
-				$bundle->setOffset($bundleSize);
+				$hg->unbundle($bundle->getBundleFileName()); // TODO make this async
 
 				$responseValues = array('transId' => $transId);
 				$response = new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
@@ -90,13 +104,22 @@ class HgResumeAPI {
 			return $response;
 		} else {
 			// received the chunk, but it's not the last one; we expect more chunks
-			$newSow = $offset + $dataSize;
-			$bundle->setOffset($newSow);
 			$responseValues = array('transId' => $transId, 'sow' => $newSow);
 			return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
 		}
 	}
 
+	/**
+	 *
+	 * Requests to pull a chunk of $chunkSize bytes at $offset in the bundle from $repoId using the
+	 * $transId to identify this transaction.
+	 * @param string $repoId
+	 * @param string $baseHash
+	 * @param int $offset
+	 * @param int $chunkSize
+	 * @param string $transId
+	 * @return HgResumeResponse
+	 */
 	function pullBundleChunk($repoId, $baseHash, $offset, $chunkSize, $transId) {
 		return $this->pullBundleChunkInternal($repoId, $baseHash, $offset, $chunkSize, $transId, false);
 
@@ -109,61 +132,93 @@ class HgResumeAPI {
 				return $availability;
 			}
 
-			/********* Parameter validation and checking ************/
+			// ------------------
+			// Check the input parameters
+			// ------------------
 			// $repoId
 			$repoPath = $this->getRepoPath($repoId);
 			if (!$repoPath) {
 				return new HgResumeResponse(HgResumeResponse::UNKNOWNID);
 			}
-
-			$hg = new HgRunner($repoPath);
-			$bundle = new BundleHelper($transId);
-			$asyncRunner = new AsyncRunner($bundle->getBaseFilePath());
-
 			// $offset
 			if ($offset < 0) {
-				//invalid offset
 				return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid offset'));
 			}
+
+			$hg = new HgRunner($repoPath); // REVIEW The hg based checks only need to be done once per transaction. Would be nice to move them inside the state switch CP 2012-06
 			// $baseHash
 			if (!$hg->isValidBase($baseHash)) {
 				return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid baseHash'));
 			}
+
+			// ------------------
+			// Good to go ...
+			// ------------------
 			// if the server's tip is equal to the baseHash requested, then no pull is necessary
 			if ($hg->getTip() == $baseHash) {
 				return new HgResumeResponse(HgResumeResponse::NOCHANGE);
 			}
 
+			$bundle = new BundleHelper($transId);
+			$asyncRunner = new AsyncRunner($bundle->getBundleBaseFilePath());
+
 			$bundleCreatedInThisExecution = false;
 			$bundleFilename = $bundle->getBundleFileName();
-			$bundleTimeFile = $bundle->getBundleTimeFileName();
 
-			if (!$asyncRunner->isRunning()) {
-				// this is the first pull request; make a new bundle
-
-				if ($waitForBundleToFinish) {
-					$hg->makeBundleAndWaitUntilFinished($baseHash, $asyncRunner);
-
-				} else {
-					$hg->makeBundle($baseHash, $asyncRunner);
+			if (!$bundle->exists()) {
+				// if the client requests an offset greater than 0, but the bundle needed to be created on this request,
+				// send the RESET response since the server's bundle cache has aparently expired.
+				if ($offset > 0) {
+					return new HgResumeResponse(HgResumeResponse::RESET); // TODO Add in error information in here saying that the bundle isn't present CP 2012-06
 				}
-				$bundleCreatedInThisExecution = true;
-			}
-
-			// if the client requests an offset greater than 0, but the bundle needed to be created on this request,
-			// send the RESET response since the server's bundle cache has aparently expired.
-			if ($offset > 0 and $bundleCreatedInThisExecution) {
-				return new HgResumeResponse(HgResumeResponse::RESET);
+				// At this point we can presume that $offset == 0 so this is the first pull request; make a new bundle
+				if ($waitForBundleToFinish) {
+					$hg->makeBundleAndWaitUntilFinished($baseHash, $bundleFilename, $asyncRunner);
+				} else {
+					$hg->makeBundle($baseHash, $bundleFilename, $asyncRunner);
+				}
+				$bundle->setProp("tip", $hg->getTip());
+				$bundle->setProp("repoId", $repoId);
+				$bundle->setState(BundleHelper::State_MakingBundle);
 			}
 
 			$response = new HgResumeResponse(HgResumeResponse::SUCCESS);
-			if ($bundle->isBundleCreated()) {
-
-				if ($bundle->isBundleValid()) {
-					if ($bundleCreatedInThisExecution) {
-						$bundle->setProp("tip", $hg->getTip());
-						$bundle->setProp("repoId", $repoId);
+			switch ($bundle->getState()) {
+				case BundleHelper::State_MakingBundle:
+					if ($asyncRunner->isComplete()) {
+						if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
+							$response = new HgResumeResponse(HgResumeResponse::FAIL);
+							$response->Values = array('Error' => substr(file_get_contents($bundleTimeFile), 0, 1000));
+							return $response;
+						}
+						$bundle->setState(BundleHelper::State_Downloading);
 					}
+					// TODO turn this into a for loop $i = 0, 1 CP 2012-06
+					clearstatcache(); // clear filesize() cache so that we can get accurate answers to the filesize() function
+					if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
+						$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
+						$response->Values = array(
+								'bundleSize' => filesize($bundleFilename),
+								'chunkSize' => mb_strlen($data, "8bit"),
+								'transId' => $transId);
+						$response->Content = $data;
+					} else {
+						sleep(4);
+						clearstatcache(); // clear filesize() cache
+						// try a second time to get a chunk below bundle size
+						if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
+							$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
+							$response->Values = array(
+									'bundleSize' => filesize($bundleFilename),
+									'chunkSize' => mb_strlen($data, "8bit"),
+									'transId' => $transId);
+							$response->Content = $data;
+						} else {
+							$response = new HgResumeResponse(HgResumeResponse::INPROGRESS);
+						}
+					}
+					break;
+				case BundleHelper::State_Downloading:
 					$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
 					$response->Values = array(
 							'bundleSize' => filesize($bundleFilename),
@@ -173,36 +228,9 @@ class HgResumeAPI {
 					if ($offset > filesize($bundleFilename)) {
 						throw new Exception("offset $offset is greater than or equal to bundleSize " . filesize($bundleFilename));
 					}
-				} else {
-					$response = new HgResumeResponse(HgResumeResponse::FAIL);
-					$response->Values = array('Error' => substr(file_get_contents($bundleTimeFile), 0, 1000));
-				}
-			} else { // bundle creation is in progress
-				clearstatcache(); // clear filesize() cache
-				if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
-					$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
-					$response->Values = array(
-							'bundleSize' => filesize($bundleFilename),
-							'chunkSize' => mb_strlen($data, "8bit"),
-							'transId' => $transId);
-					$response->Content = $data;
-
-				} else {
-					sleep(4);
-					clearstatcache(); // clear filesize() cache
-					// try a second time to get a chunk below bundle size
-					if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
-						$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
-						$response->Values = array(
-								'bundleSize' => filesize($bundleFilename),
-								'chunkSize' => mb_strlen($data, "8bit"),
-								'transId' => $transId);
-						$response->Content = $data;
-					} else {
-						$response = new HgResumeResponse(HgResumeResponse::INPROGRESS);
-					}
-				}
+					break;
 			}
+
 			return $response;
 
 		} catch (Exception $e) {
@@ -277,7 +305,6 @@ class HgResumeAPI {
 	}
 
 	function finishPushBundle($transId) {
-		//return; // for testing only - remove me
 		$bundle = new BundleHelper($transId);
 		if ($bundle->cleanUpFiles()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);

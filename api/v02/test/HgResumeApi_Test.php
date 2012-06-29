@@ -210,6 +210,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$transId = __FUNCTION__;
 		$this->api->finishPullBundle($transId); // reset things on server
 		$transId = __FUNCTION__;
+		// REVIEW This doesn't need to use the wait version CP 2012-06
 		$response = $this->api->pullBundleChunkInternal('', '', 0, 50, $transId, true);
 		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
@@ -218,6 +219,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$transId = __FUNCTION__;
 		$this->api->finishPullBundle($transId); // reset things on server
+		// REVIEW This doesn't need to use the wait version CP 2012-06
 		$response = $this->api->pullBundleChunkInternal('fakeid', '', 0, 50, $transId, true);
 		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
 	}
@@ -226,6 +228,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$transId = __FUNCTION__;
 		$this->api->finishPullBundle($transId); // reset things on server
+		// REVIEW This doesn't need to use the wait version CP 2012-06
 		$response = $this->api->pullBundleChunkInternal('sampleHgRepo', 'fakehash', 0, 50, $transId, true);
 		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
@@ -235,6 +238,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$transId = __FUNCTION__;
 		$this->api->finishPullBundle($transId); // reset things on server
 		$hash = trim(file_get_contents(TestPath . "/data/sample.bundle.hash"));
+		// REVIEW This doesn't need to use the wait version CP 2012-06
 		$response = $this->api->pullBundleChunkInternal('sampleHgRepo', $hash, 0, 50, $transId, true);
 		$this->assertEqual(HgResumeResponse::NOCHANGE, $response->Code);
 	}

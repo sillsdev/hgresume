@@ -40,6 +40,21 @@ class TestOfBundleHelper extends UnitTestCase {
 		$this->assertEqual($sow, $bundle->getOffset());
 	}
 
+	function testGetState_GetReturnsDefault() {
+		$transId = __FUNCTION__;
+		$bundle = new BundleHelper($transId);
+		$this->assertEqual(BundleHelper::State_Start, $bundle->getState());
+		$bundle->cleanUpFiles();
+	}
+
+	function testSetGetState_GetReturnsSet() {
+		$transId = __FUNCTION__;
+		$bundle = new BundleHelper($transId);
+		$bundle->setState(BundleHelper::State_Downloading);
+		$this->assertEqual(BundleHelper::State_Downloading, $bundle->getState());
+		$bundle->cleanUpFiles();
+	}
+
 	function testSetGetHasProp_SetMultipleProps_GetPropsOkAndVerifyHasPropsOk() {
 		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
