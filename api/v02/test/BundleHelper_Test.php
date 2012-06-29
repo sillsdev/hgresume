@@ -6,12 +6,12 @@ require_once(SourcePath . "/BundleHelper.php");
 
 class TestOfBundleHelper extends UnitTestCase {
 
-	function testCleanUpFiles_BundleFileExists_DeletesBundleFile() {
+	function testcleanUp_BundleFileExists_DeletesBundleFile() {
 		$bundle = new BundleHelper(__FUNCTION__);
-		$bundle->cleanUpFiles();
+		$bundle->cleanUp();
 		$bundleFilename = $bundle->getBundleFileName();
 		file_put_contents($bundleFilename, "bundle data");
-		$bundle->cleanUpFiles();
+		$bundle->cleanUp();
 		$this->assertFalse(is_file($bundleFilename));
 	}
 
@@ -27,14 +27,14 @@ class TestOfBundleHelper extends UnitTestCase {
 	function testGetOffset_Unset_ReturnsZero() {
 		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
-		$bundle->cleanUpFiles();
+		$bundle->cleanUp();
 		$this->assertEqual(0, $bundle->getOffset());
 	}
 
 	function testSetGetOffset_SetThenGet_GetReturnsValueThatWasSet() {
 		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
-		$bundle->cleanUpFiles();
+		$bundle->cleanUp();
 		$sow = 5023;
 		$bundle->setOffset($sow);
 		$this->assertEqual($sow, $bundle->getOffset());
@@ -44,7 +44,7 @@ class TestOfBundleHelper extends UnitTestCase {
 		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
 		$this->assertEqual(BundleHelper::State_Start, $bundle->getState());
-		$bundle->cleanUpFiles();
+		$bundle->cleanUp();
 	}
 
 	function testSetGetState_GetReturnsSet() {
@@ -52,13 +52,13 @@ class TestOfBundleHelper extends UnitTestCase {
 		$bundle = new BundleHelper($transId);
 		$bundle->setState(BundleHelper::State_Downloading);
 		$this->assertEqual(BundleHelper::State_Downloading, $bundle->getState());
-		$bundle->cleanUpFiles();
+		$bundle->cleanUp();
 	}
 
 	function testSetGetHasProp_SetMultipleProps_GetPropsOkAndVerifyHasPropsOk() {
 		$transId = __FUNCTION__;
 		$bundle = new BundleHelper($transId);
-		$bundle->cleanUpFiles();
+		$bundle->cleanUp();
 		$this->assertFalse($bundle->hasProp("tip"));
 		$bundle->setProp("tip", "7890");
 		$this->assertTrue($bundle->hasProp("tip"));

@@ -66,46 +66,84 @@ class HgResumeAPI {
 		// ------------------
 
 		$bundle = new BundleHelper($transId);
+		switch ($bundle->getState()) {
+			case BundleHelper::State_Start:
+				$bundle->setState(BundleHelper::State_Uploading);
+				// Fall through to State_Uploading
+			case BundleHelper::State_Uploading:
+				// if the data sent falls before the start of window, mark it as received and reply with correct startOfWindow
+				// Fail if there is overlap or a mismatch between the start of window and the data offset
+				$startOfWindow = $bundle->getOffset();
+				if ($offset != $startOfWindow) { // these are usually equal.  It could be a client programming error if they are not
+					if ($offset < $startOfWindow) {
+						return new HgResumeResponse(HgResumeResponse::RECEIVED, array('sow' => $startOfWindow, 'Note' => 'server received duplicate data'));
+					} else {
+						return new HgResumeResponse(HgResumeResponse::FAIL, array('sow' => $startOfWindow, 'Error' => "data sent ($dataSize) with offset ($offset) falls after server's start of window ($startOfWindow)"));
+					}
+				}
+				// write chunk data to bundle file
+				$bundleFile = fopen($bundle->getBundleFileName(), "a");
+				fseek($bundleFile, $offset);
+				fwrite($bundleFile, $data);
+				fclose($bundleFile);
 
-		// if the data sent falls before the start of window, mark it as received and reply with correct startOfWindow
-		// Fail if there is overlap or a mismatch between the start of window and the data offset
-		$startOfWindow = $bundle->getOffset();
-		if ($offset != $startOfWindow) { // these are usually equal.  It could be a client programming error if they are not
-			if ($offset < $startOfWindow) {
-				return new HgResumeResponse(HgResumeResponse::RECEIVED, array('sow' => $startOfWindow, 'Note' => 'server received duplicate data'));
-			} else {
-				return new HgResumeResponse(HgResumeResponse::FAIL, array('sow' => $startOfWindow, 'Error' => "data sent ($dataSize) with offset ($offset) falls after server's start of window ($startOfWindow)"));
-			}
-		}
+				$newSow = $offset + $dataSize;
+				$bundle->setOffset($newSow);
 
-		// write chunk data to bundle file
-		$bundleFile = fopen($bundle->getBundleFileName(), "a");
-		fseek($bundleFile, $offset);
-		fwrite($bundleFile, $data);
-		fclose($bundleFile);
-
-		$newSow = $offset + $dataSize;
-		$bundle->setOffset($newSow);
-		// for the final chunk; assemble the bundle and apply the bundle
-		if ($newSow == $bundleSize) {
-			try {
-				$hg->unbundle($bundle->getBundleFileName()); // TODO make this async
-
-				$responseValues = array('transId' => $transId);
-				$response = new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
-				$this->finishPushBundle($transId); // clean up bundle assembly cache
-			} catch (Exception $e) {
-				$bundle->setOffset(0);
-				$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
-				$responseValues['transId'] = $transId;
-				$response = new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
-				//$this->finishPushBundle($transId); // clean up bundle assembly cache
-			}
-			return $response;
-		} else {
-			// received the chunk, but it's not the last one; we expect more chunks
-			$responseValues = array('transId' => $transId, 'sow' => $newSow);
-			return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
+				// for the final chunk; assemble the bundle and apply the bundle
+				if ($newSow == $bundleSize) {
+					$bundle->setState(BundleHelper::State_Unbundle);
+					try {  // REVIEW Would be nice if the try / catch logic was universal. ie one policy for the api function. CP 2012-06
+						$bundleFilePath = $bundle->getBundleFileName();
+						$asyncRunner = new AsyncRunner($bundleFilePath);
+						$hg->unbundle($bundleFilePath, $asyncRunner);
+						for ($i = 0; $i < 4; $i++) {
+							if ($asyncRunner->isComplete()) {
+								if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
+									$responseValues = array('transId' => $transId);
+									return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
+								}
+								$bundle->cleanUp();
+								$asyncRunner->cleanUp();
+								$responseValues = array('transId' => $transId);
+								return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
+							}
+							sleep(1);
+						}
+						$responseValues = array('transId' => $transId, 'sow' => $newSow);
+						return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
+						// REVIEW Not sure what returning 'RECEIVED' will do to the client here, we've got all the data but need to
+					} catch (Exception $e) {
+						echo $e->getMessage(); // FIXME
+						$bundle->setOffset(0);
+						$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
+						$responseValues['transId'] = $transId;
+						return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
+						//$this->finishPushBundle($transId); // clean up bundle assembly cache
+					}
+				} else {
+					// received the chunk, but it's not the last one; we expect more chunks
+					$responseValues = array('transId' => $transId, 'sow' => $newSow);
+					return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
+				}
+				break;
+			case BundleHelper::State_Unbundle:
+				$bundleFilePath = $bundle->getBundleFileName();
+				$asyncRunner = new AsyncRunner($bundleFilePath);
+				if ($asyncRunner->isComplete()) {
+					if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
+						$responseValues = array('transId' => $transId);
+						return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
+					}
+					$bundle->cleanUp();
+					$asyncRunner->cleanUp();
+					$responseValues = array('transId' => $transId);
+					return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
+				} else {
+					$responseValues = array('transId' => $transId, 'sow' => $newSow);
+					return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
+				}
+				break;
 		}
 	}
 
@@ -179,12 +217,12 @@ class HgResumeAPI {
 				}
 				$bundle->setProp("tip", $hg->getTip());
 				$bundle->setProp("repoId", $repoId);
-				$bundle->setState(BundleHelper::State_MakingBundle);
+				$bundle->setState(BundleHelper::State_Bundle);
 			}
 
 			$response = new HgResumeResponse(HgResumeResponse::SUCCESS);
 			switch ($bundle->getState()) {
-				case BundleHelper::State_MakingBundle:
+				case BundleHelper::State_Bundle:
 					if ($asyncRunner->isComplete()) {
 						if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
 							$response = new HgResumeResponse(HgResumeResponse::FAIL);
@@ -306,7 +344,7 @@ class HgResumeAPI {
 
 	function finishPushBundle($transId) {
 		$bundle = new BundleHelper($transId);
-		if ($bundle->cleanUpFiles()) {
+		if ($bundle->cleanUp()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
 		} else {
 			return new HgResumeResponse(HgResumeResponse::FAIL);
@@ -321,12 +359,12 @@ class HgResumeAPI {
 				$hg = new HgRunner($repoPath);
 				// check that the repo has not been updated, since a pull was started
 				if ($bundle->getProp("tip") != $hg->getTip()) {
-					$bundle->cleanUpFiles();
+					$bundle->cleanUp();
 					return new HgResumeResponse(HgResumeResponse::RESET);
 				}
 			}
 		}
-		if ($bundle->cleanUpFiles()) {
+		if ($bundle->cleanUp()) {
 			return new HgResumeResponse(HgResumeResponse::SUCCESS);
 		}
 		return new HgResumeResponse(HgResumeResponse::FAIL);

@@ -1,14 +1,17 @@
 <?php
 
 class BundleHelper {
+
+	const State_Start       = 'Start';
+	const State_Bundle      = 'Bundle';
+	const State_Downloading = 'Downloading';
+	const State_Uploading   = 'Uploading';
+	const State_Unbundle    = 'Unbundle';
+
 	private $_transactionId;
 	private $_basePath;
 
-	const State_Start = 'Start';
-	const State_MakingBundle = 'MakingBundle';
-	const State_Downloading = 'Downloading';
-
-	function __construct($id) {
+	public function __construct($id) {
 		if(!BundleHelper::validateAlphaNumeric($id)) {
 			throw new Exception("ValidationException: transId $id did not validate as alpha numeric!");
 		}
@@ -33,7 +36,10 @@ class BundleHelper {
 		return file_exists($this->getBundleFileName());
 	}
 
-	function cleanUpFiles() {
+	/**
+	 * Removes the bundle file and the meta file
+	 */
+	public function cleanUp() {
 		if (file_exists($this->getBundleFileName())) {
 			unlink($this->getBundleFileName());
 		}

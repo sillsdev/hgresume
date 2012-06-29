@@ -26,21 +26,15 @@ class HgRunner {
 		file_put_contents($logFilename, "$message\n", FILE_APPEND | LOCK_EX);
 	}
 
-	function unbundle($filepath) {
-		if (is_file($filepath)) {
-			chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
-			// TODO Make this async
-			$cmd = "hg unbundle $filepath";
-			$this->logEvent("cmd: $cmd");
-			exec(escapeshellcmd($cmd), $output, $returnval);
-			if ($returnval != 0) {
-				$this->logEvent("previous cmd failed with returnval '$returnval' and output "
-				. implode("|", $output));
-				throw new Exception("command '$cmd' failed!");
-			}
-		} else {
+	function unbundle($filepath, $asyncRunner) {
+		if (!is_file($filepath)) {
 			throw new Exception("bundle file '$filepath' is not a file!");
 		}
+		chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
+		// TODO Make this async
+		$cmd = "hg unbundle $filepath";
+		$this->logEvent("cmd: $cmd");
+		$asyncRunner->run($cmd);
 	}
 
 	function update($revision = "") {
