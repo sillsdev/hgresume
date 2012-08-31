@@ -164,7 +164,18 @@ class HgResumeAPI {
 	}
 
 	// TODO JASON Need to have $baseHashes here which would be an array of hashes known to be in the client, tipmost one per branch.
-	function pullBundleChunkInternal($repoId, $baseHash, $offset, $chunkSize, $transId, $waitForBundleToFinish) {
+	/**
+	 *
+	 * @param string $repoId
+	 * @param array[string] $baseHash
+	 * @param int $offset
+	 * @param int $chunkSize
+	 * @param string $transId
+	 * @param bool $waitForBundleToFinish
+	 * @throws Exception
+	 * @return HgResumeResponse
+	 */
+	function pullBundleChunkInternal($repoId, $baseHashes, $offset, $chunkSize, $transId, $waitForBundleToFinish) {
 		try {
 			$availability = $this->isAvailable();
 			if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
@@ -185,10 +196,9 @@ class HgResumeAPI {
 			}
 
 			$hg = new HgRunner($repoPath); // REVIEW The hg based checks only need to be done once per transaction. Would be nice to move them inside the state switch CP 2012-06
-			// $baseHash
+			// $basehashes
 			// TODO This might be bogus, the given baseHash may well be a baseHash that exists in a future push, and we don't have it right now. CP 2012-08
-			// TODO JASON, this would need fixing up for multiple bases.
-			if (!$hg->isValidBase($baseHash)) {
+			if (!$hg->isValidBase($basehashes)) {
 				return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid baseHash'));
 			}
 
@@ -196,11 +206,11 @@ class HgResumeAPI {
 			// Good to go ...
 			// ------------------
 			// if the server's tip is equal to the baseHash requested, then no pull is necessary
-			// TODO JASON, need to loop through all the branches to see if we have anything that is tip-more than the baseHash given.
-			// TODO JASON, this bit here is an optimization that may no longer be relevant.  The equivalent would be if foreach in heads (tip of all heads == base hash) => nothing to pull.
-			if ($hg->getTip() == $baseHash) {
+			if ($hg->getBranchTips() == $basehashes) {
 				return new HgResumeResponse(HgResumeResponse::NOCHANGE);
 			}
+
+			// TODO JASON, need to loop through all the branches to see if we have anything that is tip-more than the baseHash given.
 
 			$bundle = new BundleHelper($transId);
 			$asyncRunner = new AsyncRunner($bundle->getBundleBaseFilePath());
@@ -216,10 +226,9 @@ class HgResumeAPI {
 				}
 				// At this point we can presume that $offset == 0 so this is the first pull request; make a new bundle
 				if ($waitForBundleToFinish) {
-					$hg->makeBundleAndWaitUntilFinished($baseHash, $bundleFilename, $asyncRunner);
+					$hg->makeBundleAndWaitUntilFinished($basehashes, $bundleFilename, $asyncRunner);
 				} else {
-					// TODO JASON make makeBundle multiple baseHash aware
-					$hg->makeBundle($baseHash, $bundleFilename, $asyncRunner);
+					$hg->makeBundle($basehashes, $bundleFilename, $asyncRunner);
 				}
 				$bundle->setProp("tip", $hg->getTip());
 				$bundle->setProp("repoId", $repoId);
