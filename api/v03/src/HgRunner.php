@@ -44,7 +44,7 @@ class HgRunner {
 	}
 
 	/**
-	 * @param string $baseHash
+	 * @param string $baseHashes[]
 	 * @param string $bundleFilePath
 	 * @param AsyncRunner $asyncRunner
 	 */
@@ -65,12 +65,12 @@ class HgRunner {
 
 	/**
 	 * helper function, mostly for tests
-	 * @param string $baseHash
+	 * @param string $baseHashes[]
 	 * @param string $bundleFilePath
 	 * @param AsyncRunner $asyncRunner
 	 */
-	function makeBundleAndWaitUntilFinished($baseHash, $bundleFilePath, $asyncRunner) {
-		$this->makeBundle($baseHash, $bundleFilePath, $asyncRunner);
+	function makeBundleAndWaitUntilFinished($baseHashes, $bundleFilePath, $asyncRunner) {
+		$this->makeBundle($baseHashes, $bundleFilePath, $asyncRunner);
 		while (true) {
 			if ($asyncRunner->isComplete()) {
 				break;
@@ -90,26 +90,26 @@ class HgRunner {
 		$branches = explode('\n', $output);
 		foreach($branches as $branch)
 		{
+			//append the first revision for the branch to the array
 			$revisionArray[] = $this->getRevisions(0, 1, $branch);
 		}
 		return $revisionArray;
 	}
 
-
 	//this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
 	function getRevisions($offset, $quantity) {
-		getRevisions($offset, $quantity, null);
+		getRevisionsInternal($offset, $quantity, NULL);
 	}
 
 	//this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
-	function getRevisions($offset, $quantity, $branch) {
+	function getRevisionsInternal($offset, $quantity, $branch) {
 		if ($quantity < 1) {
 			throw new Exception("quantity parameter much be larger than 0");
 		}
-		chdir($this->repoPath);
+				chdir($this->repoPath);
 		// I believe ':' is illegal in branch names, it is in tag, so we will use that to split the hash and branch
 		$cmd = 'hg log ';
-		if($branch != null) {
+		if(!is_null($branch)) {
 			$cmd += ' -b ' + $branch;
 		}
 		$cmd += ' --template "{node|short}:{branch}\n"';

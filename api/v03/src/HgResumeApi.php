@@ -167,7 +167,7 @@ class HgResumeAPI {
 	/**
 	 *
 	 * @param string $repoId
-	 * @param array[string] $baseHash
+	 * @param array[string] $baseHashes
 	 * @param int $offset
 	 * @param int $chunkSize
 	 * @param string $transId
