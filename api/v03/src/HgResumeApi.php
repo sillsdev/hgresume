@@ -198,19 +198,18 @@ class HgResumeAPI {
 			$hg = new HgRunner($repoPath); // REVIEW The hg based checks only need to be done once per transaction. Would be nice to move them inside the state switch CP 2012-06
 			// $basehashes
 			// TODO This might be bogus, the given baseHash may well be a baseHash that exists in a future push, and we don't have it right now. CP 2012-08
-			if (!$hg->isValidBase($basehashes)) {
+			if (!$hg->isValidBase($baseHashes)) {
 				return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid baseHash'));
 			}
 
 			// ------------------
 			// Good to go ...
 			// ------------------
-			// if the server's tip is equal to the baseHash requested, then no pull is necessary
-			if ($hg->getBranchTips() == $basehashes) {
+			// if the every branch tip is in the baseHashes requested, then no pull is necessary
+			if (count(array_diff($hg->getBranchTips(), $baseHashes)) == 0) {
 				return new HgResumeResponse(HgResumeResponse::NOCHANGE);
 			}
 
-			// TODO JASON, need to loop through all the branches to see if we have anything that is tip-more than the baseHash given.
 
 			$bundle = new BundleHelper($transId);
 			$asyncRunner = new AsyncRunner($bundle->getBundleBaseFilePath());
@@ -226,9 +225,9 @@ class HgResumeAPI {
 				}
 				// At this point we can presume that $offset == 0 so this is the first pull request; make a new bundle
 				if ($waitForBundleToFinish) {
-					$hg->makeBundleAndWaitUntilFinished($basehashes, $bundleFilename, $asyncRunner);
+					$hg->makeBundleAndWaitUntilFinished($baseHashes, $bundleFilename, $asyncRunner);
 				} else {
-					$hg->makeBundle($basehashes, $bundleFilename, $asyncRunner);
+					$hg->makeBundle($baseHashes, $bundleFilename, $asyncRunner);
 				}
 				$bundle->setProp("tip", $hg->getTip());
 				$bundle->setProp("repoId", $repoId);
@@ -321,8 +320,9 @@ class HgResumeAPI {
 			$repoPath = $this->getRepoPath($repoId);
 			if ($repoPath) {
 				$hg = new HgRunner($repoPath);
-				$revisionList = $hg->getRevisions(0,1);
-				$response = array('Tip' => $revisionList[0]);
+				$hashandbranch = $hg->getRevisions(0,1);
+				$revision = explode(":", $hashandbranch[0]);
+				$response = array('Tip' => $revision[0]); //just return the hash for the most recent revision
 				$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, $response);
 			}
 			else {

@@ -56,9 +56,9 @@ class HgRunner {
 			$cmd = "hg bundle ";
 			foreach($baseHashes as $hash)
 			{
-				$cmd += "--base $hash ";
+				$cmd .= "--base $hash ";
 			}
-			$cmd += $bundleFilePath;
+			$cmd .= $bundleFilePath;
 		}
 		$asyncRunner->run($cmd);
 	}
@@ -87,18 +87,24 @@ class HgRunner {
 	function getBranchTips() {
 		chdir($this->repoPath);
 		exec('hg branches', $output, $returnval);
-		$branches = explode('\n', $output);
-		foreach($branches as $branch)
+		$revisionArray = array();
+		foreach($output as $branch)
 		{
+			$branchName = strstr($branch, ' ', true);
 			//append the first revision for the branch to the array
-			$revisionArray[] = $this->getRevisions(0, 1, $branch);
+			$revisionArray = array_merge($revisionArray, $this->getRevisionsInternal(0, 1, $branchName));
 		}
-		return $revisionArray;
+		$revisions = array();
+		foreach($revisionArray as $hashandbranch)
+		{
+			$revisions[] = strstr($hashandbranch, ":", true);
+		}
+		return $revisions;
 	}
 
 	//this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
 	function getRevisions($offset, $quantity) {
-		getRevisionsInternal($offset, $quantity, NULL);
+		return $this->getRevisionsInternal($offset, $quantity, NULL);
 	}
 
 	//this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
@@ -106,14 +112,14 @@ class HgRunner {
 		if ($quantity < 1) {
 			throw new Exception("quantity parameter much be larger than 0");
 		}
-				chdir($this->repoPath);
+		chdir($this->repoPath);
 		// I believe ':' is illegal in branch names, it is in tag, so we will use that to split the hash and branch
-		$cmd = 'hg log ';
+		$cmd = 'hg log';
 		if(!is_null($branch)) {
-			$cmd += ' -b ' + $branch;
+			$cmd .= ' -b ' . $branch;
 		}
-		$cmd += ' --template "{node|short}:{branch}\n"';
-		exec(escapeshellcmd($cmd), $output, $returnval);
+		$cmd .= ' --template "{node|short}:{branch}\n"';
+		exec($cmd, $output, $returnval);
 		if (count($output) == 0) {
 			exec('hg tip --template "{rev}:{branch}\n"', $output2, $returnval);
 			if (count($output2) == 1 and startsWith($output2[0], "-1")) {
@@ -138,8 +144,16 @@ class HgRunner {
 			if (count($revisions) == 0) {
 				return false;
 			}
-			if (in_array($hash, $revisions)) {
-				$foundHash++;
+			foreach($revisions as $hashandbranch)
+			{
+				$rev = strstr($hashandbranch, ":", true);
+				if (array_search($rev, $hashes, false) !== false) {
+					$foundHash++;
+					if($foundHash >= count($hashes))
+					{
+						break;
+					}
+				}
 			}
 			$i += $q;
 		}
