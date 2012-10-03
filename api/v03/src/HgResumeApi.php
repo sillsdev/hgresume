@@ -163,7 +163,6 @@ class HgResumeAPI {
 
 	}
 
-	// TODO JASON Need to have $baseHashes here which would be an array of hashes known to be in the client, tipmost one per branch.
 	/**
 	 *
 	 * @param string $repoId
@@ -205,12 +204,10 @@ class HgResumeAPI {
 			// ------------------
 			// Good to go ...
 			// ------------------
-			// if the every branch tip is in the baseHashes requested, then no pull is necessary
-			if (count(array_diff($hg->getBranchTips(), $baseHashes)) == 0) {
+			// If every requested baseHash is a branch tip then no pull is necessary
+			if (array_count_values(array_diff((array)$baseHashes, $hg->getBranchTips())) == 0) {
 				return new HgResumeResponse(HgResumeResponse::NOCHANGE);
 			}
-
-
 			$bundle = new BundleHelper($transId);
 			$asyncRunner = new AsyncRunner($bundle->getBundleBaseFilePath());
 

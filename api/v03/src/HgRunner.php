@@ -54,6 +54,7 @@ class HgRunner {
 			$cmd = "hg bundle --all $bundleFilePath";
 		} else {
 			$cmd = "hg bundle ";
+			$baseHashes = (array)$baseHashes; //I can't figure out why this is sometimes not an array
 			foreach($baseHashes as $hash)
 			{
 				$cmd .= "--base $hash ";
@@ -90,14 +91,19 @@ class HgRunner {
 		$revisionArray = array();
 		foreach($output as $branch)
 		{
-			$branchName = strstr($branch, ' ', true);
+			if($branch == '') {
+				$branchName = 'default';
+			}
+			else {
+				$branchName = substr($branch, 0, strpos($branch, ' '));
+			}
 			//append the first revision for the branch to the array
 			$revisionArray = array_merge($revisionArray, $this->getRevisionsInternal(0, 1, $branchName));
 		}
 		$revisions = array();
 		foreach($revisionArray as $hashandbranch)
 		{
-			$revisions[] = strstr($hashandbranch, ":", true);
+			$revisions[] = substr($hashandbranch, 0, strpos($hashandbranch, ":"));
 		}
 		return $revisions;
 	}
@@ -146,8 +152,8 @@ class HgRunner {
 			}
 			foreach($revisions as $hashandbranch)
 			{
-				$rev = strstr($hashandbranch, ":", true);
-				if (array_search($rev, $hashes, false) !== false) {
+				$rev = substr($hashandbranch, 0, strpos($hashandbranch, ":"));
+				if (array_search($rev, (array)$hashes, false) !== false) {
 					$foundHash++;
 					if($foundHash >= count($hashes))
 					{
