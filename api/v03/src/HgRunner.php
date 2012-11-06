@@ -89,20 +89,17 @@ class HgRunner {
 		chdir($this->repoPath);
 		exec('hg branches', $output, $returnval);
 		$revisionArray = array();
-		foreach($output as $branch)
-		{
+		foreach($output as $branch) {
 			if($branch == '') {
 				$branchName = 'default';
-			}
-			else {
+			} else {
 				$branchName = substr($branch, 0, strpos($branch, ' '));
 			}
 			//append the first revision for the branch to the array
 			$revisionArray = array_merge($revisionArray, $this->getRevisionsInternal(0, 1, $branchName));
 		}
 		$revisions = array();
-		foreach($revisionArray as $hashandbranch)
-		{
+		foreach($revisionArray as $hashandbranch) {
 			$revisions[] = substr($hashandbranch, 0, strpos($hashandbranch, ":"));
 		}
 		return $revisions;
@@ -150,13 +147,11 @@ class HgRunner {
 			if (count($revisions) == 0) {
 				return false;
 			}
-			foreach($revisions as $hashandbranch)
-			{
+			foreach($revisions as $hashandbranch) {
 				$rev = substr($hashandbranch, 0, strpos($hashandbranch, ":"));
 				if (array_search($rev, (array)$hashes, false) !== false) {
 					$foundHash++;
-					if($foundHash >= count($hashes))
-					{
+					if($foundHash >= count($hashes)) {
 						break;
 					}
 				}

@@ -160,7 +160,6 @@ class HgResumeAPI {
 	 */
 	function pullBundleChunk($repoId, $baseHashes, $offset, $chunkSize, $transId) {
 		return $this->pullBundleChunkInternal($repoId, $baseHashes, $offset, $chunkSize, $transId, false);
-
 	}
 
 	/**
