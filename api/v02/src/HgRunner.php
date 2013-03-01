@@ -37,10 +37,11 @@ class HgRunner {
 		$asyncRunner->run($cmd);
 	}
 
-	function update($revision = "") {
+	function update($asyncRunner, $revision = "") {
 		chdir($this->repoPath);
 		$cmd = "hg update $revision";
-		exec(escapeshellcmd($cmd), $output, $returnval);
+		$this->logEvent("cmd: $cmd");
+		$asyncRunner->run($cmd);
 	}
 
 	/**

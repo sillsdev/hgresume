@@ -60,6 +60,15 @@ class AsyncRunner
 		return $this->_baseFilePath . '.isFinished';
 	}
 
+	public function synchronize() {
+		for ($i = 0; $i < 100; $i++) {
+			if ($this->isComplete()) {
+				return;
+			}
+			sleep(1);
+		}
+		throw new Exception("Error: Long running process exceeded 100 seconds while waiting to synchronize");
+	}
 }
 
 ?>
