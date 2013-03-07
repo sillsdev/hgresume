@@ -112,14 +112,19 @@ class HgResumeAPI {
 						}
 						$responseValues = array('transId' => $transId, 'sow' => $newSow);
 						return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
-						// REVIEW Not sure what returning 'RECEIVED' will do to the client here, we've got all the data but need to
+						// REVIEW Not sure what returning 'RECEIVED' will do to the client here, we've got all the data but need to wait for the unbundle to finish before sending success
+					} catch (UnrelatedRepoException $e) {
+						$bundle->setOffset(0);
+						$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
+						$responseValues['transId'] = $transId;
+						return new HgResumeResponse(HgResumeResponse::FAIL, $responseValues);
 					} catch (Exception $e) {
-						echo $e->getMessage(); // FIXME
+						// REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03
+						//echo $e->getMessage(); // FIXME
 						$bundle->setOffset(0);
 						$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
 						$responseValues['transId'] = $transId;
 						return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
-						//$this->finishPushBundle($transId); // clean up bundle assembly cache
 					}
 				} else {
 					// received the chunk, but it's not the last one; we expect more chunks
@@ -133,6 +138,7 @@ class HgResumeAPI {
 				if ($asyncRunner->isComplete()) {
 					if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
 						$responseValues = array('transId' => $transId);
+						// REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03
 						return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
 					}
 					$bundle->cleanUp();
@@ -264,7 +270,7 @@ class HgResumeAPI {
 							'transId' => $transId);
 					$response->Content = $data;
 					if ($offset > filesize($bundleFilename)) {
-						throw new Exception("offset $offset is greater than or equal to bundleSize " . filesize($bundleFilename));
+						throw new ValidationException("offset $offset is greater than or equal to bundleSize " . filesize($bundleFilename));
 					}
 					break;
 			}

@@ -393,6 +393,19 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual(HgResumeResponse::NOTAVAILABLE, $response->Code);
 		$this->assertEqual($message, $response->Content);
 	}
+
+	function testPushBundleChunk_pushBundleFromUnrelatedRepo_FailCodeWithMessage() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$transId = __FUNCTION__;
+		$this->api->finishPushBundle($transId);
+
+		$bundleData = file_get_contents(TestPath . "/data/unrelated.bundle");
+		$bundleSize = mb_strlen($bundleData, "8bit");
+		//$chunkData = mb_substr($bundleData, 0, 50, "8bit");
+		//$actualChunkSize = mb_strlen($chunkData, "8bit");
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $bundleSize, 0, $bundleData, $transId);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
+	}
 }
 
 ?>

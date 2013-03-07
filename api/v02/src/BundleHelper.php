@@ -13,7 +13,7 @@ class BundleHelper {
 
 	public function __construct($id) {
 		if(!BundleHelper::validateAlphaNumeric($id)) {
-			throw new Exception("ValidationException: transId $id did not validate as alpha numeric!");
+			throw new ValidationException("transId $id did not validate as alpha numeric!");
 		}
 		$this->_transactionId = $id;
 		$this->_basePath = CACHE_PATH;
@@ -23,7 +23,7 @@ class BundleHelper {
 		$path = "{$this->_basePath}";
 		if (!is_dir($path)) {
 			if (!mkdir($path, 0755, true)) {
-				throw new Exception("Failed to create repo dir: $path");
+				throw new BundleHelperException("Failed to create repo dir: $path");
 			}
 		}
 		return $path;
