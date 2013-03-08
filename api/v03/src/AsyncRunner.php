@@ -1,5 +1,7 @@
 <?php
 
+require_once('HgExceptions.php');
+
 class AsyncRunner
 {
 	private $_baseFilePath;
@@ -34,7 +36,7 @@ class AsyncRunner
 	public function isComplete() {
 		$lockFilePath = $this->getLockFilePath();
 		if (!file_exists($lockFilePath)) {
-			throw new Exception("Lock file '$lockFilePath' not found, process is not running");
+			throw new AsyncRunnerException("Lock file '$lockFilePath' not found, process is not running");
 		}
 		$data = file_get_contents($this->getLockFilePath());
 		if (strpos($data, "AsyncCompleted") !== false) {
@@ -45,7 +47,7 @@ class AsyncRunner
 
 	public function getOutput() {
 		if (!$this->isComplete()) {
-			throw new Exception("Command on '$this->_baseFilePath' not yet complete.");
+			throw new AsyncRunnerException("Command on '$this->_baseFilePath' not yet complete.");
 		}
 		return file_get_contents($this->getLockFilePath());
 	}
@@ -60,6 +62,15 @@ class AsyncRunner
 		return $this->_baseFilePath . '.isFinished';
 	}
 
+	public function synchronize() {
+		for ($i = 0; $i < 200; $i++) {
+			if ($this->isComplete()) {
+				return;
+			}
+			usleep(500000);
+		}
+		throw new AsyncRunnerException("Error: Long running process exceeded 100 seconds while waiting to synchronize");
+	}
 }
 
 ?>

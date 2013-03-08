@@ -11,7 +11,7 @@ class HgRunner {
 		if (is_dir($repoPath)) {
 			$this->repoPath = $repoPath;
 		} else {
-			throw new Exception("repo '$repoPath' doesn't exist!");
+			throw new ValidationException("repo '$repoPath' doesn't exist!");
 		}
 		$logState = false;
 	}
@@ -28,19 +28,36 @@ class HgRunner {
 
 	function unbundle($filepath, $asyncRunner) {
 		if (!is_file($filepath)) {
-			throw new Exception("bundle file '$filepath' is not a file!");
+			throw new HgException("bundle file '$filepath' is not a file!");
 		}
 		chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
-		// TODO Make this async
+
+		// run hg incoming to make sure this bundle is related to the repo
+		$cmd = "hg incoming $filepath";
+		$this->logEvent("cmd: $cmd");
+		$asyncRunner->run($cmd);
+		$asyncRunner->synchronize();
+		$output = $asyncRunner->getOutput();
+		if (preg_match('/abort:.*unknown parent/', $output)) {
+			throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
+		}
+		if (preg_match('/parent:\s*-1:/', $output)) {
+			throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
+		}
+		if (preg_match('/abort:.*not a Mercurial bundle/', $output)) {
+			throw new Exception("Project cannot be updated!  (corrupt bundle pushed to repo)");
+		}
+
 		$cmd = "hg unbundle $filepath";
 		$this->logEvent("cmd: $cmd");
 		$asyncRunner->run($cmd);
 	}
 
-	function update($revision = "") {
+	function update($asyncRunner, $revision = "") {
 		chdir($this->repoPath);
 		$cmd = "hg update $revision";
-		exec(escapeshellcmd($cmd), $output, $returnval);
+		$this->logEvent("cmd: $cmd");
+		$asyncRunner->run($cmd);
 	}
 
 	/**
@@ -113,7 +130,7 @@ class HgRunner {
 	//this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
 	function getRevisionsInternal($offset, $quantity, $branch) {
 		if ($quantity < 1) {
-			throw new Exception("quantity parameter much be larger than 0");
+			throw new ValidationException("quantity parameter much be larger than 0");
 		}
 		chdir($this->repoPath);
 		// I believe ':' is illegal in branch names, it is in tag, so we will use that to split the hash and branch
@@ -125,12 +142,13 @@ class HgRunner {
 		exec($cmd, $output, $returnval);
 		if (count($output) == 0) {
 			exec('hg tip --template "{rev}:{branch}\n"', $output2, $returnval);
+
 			if (count($output2) == 1 and startsWith($output2[0], "-1")) {
 				//in the case of a tip result like '-1:default' we will return '0:default' to signal the empty repo
-				$output2[0] =  str_replace("-1", "0", $output2[0]);
+				$output2[0] = preg_replace('/^-1/', '0', $output2[0]);
 				return $output2; //
 			}
-			throw new Exception("command '$cmd' failed!\n");
+			throw new HgException("command '$cmd' failed!\n");
 		}
 		return array_slice($output, $offset, $quantity);
 	}
@@ -161,17 +179,18 @@ class HgRunner {
 		return true;
 	}
 
+	// helper function used in tests
 	function addAndCheckInFile($filePath) {
 		chdir($this->repoPath);
 		$cmd = "hg add $filePath";
 		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
 		if ($returnval != 0) {
-			throw new Exception("command '$cmd' failed!\n");
+			throw new HgException("command '$cmd' failed!\n");
 		}
 		$cmd = "hg commit -u 'system' -m 'added file $filePath'";
 		exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
 		if ($returnval != 0) {
-			throw new Exception("command '$cmd' failed!\n");
+			throw new HgException("command '$cmd' failed!\n");
 		}
 	}
 }

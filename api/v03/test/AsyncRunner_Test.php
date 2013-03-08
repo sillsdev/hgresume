@@ -10,7 +10,7 @@ class TestOfAsyncRunner extends UnitTestCase {
 		$runner = new AsyncRunner('/tmp/testFile');
 		$runner->run('echo foo');
 		$this->assertFalse($runner->isComplete());
-		usleep(1000); // Fails @ 400us
+		$runner->synchronize();
 		$this->assertTrue($runner->isComplete());
 	}
 
@@ -47,7 +47,7 @@ class TestOfAsyncRunner extends UnitTestCase {
 	function testGetOutput_Complete_ReturnsOutput() {
 		$runner = new AsyncRunner('/tmp/testFile');
 		$runner->run('echo abort');
-		usleep(1000); // Fails @ 400us
+		$runner->synchronize();
 		$data = $runner->getOutput();
 		$this->assertPattern('/abort/', $data);
 	}

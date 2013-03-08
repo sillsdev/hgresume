@@ -35,8 +35,12 @@ class TestOfHgRunner extends UnitTestCase {
 
 		// check for success file
 		$hg = new HgRunner($repoPath);
-		$hg->unbundle($bundleFile);
-		$hg->update();
+		$asyncRunner = new AsyncRunner($bundleFile);
+		$hg->unbundle($bundleFile, $asyncRunner);
+		$asyncRunner->synchronize();
+		$asyncRunner->cleanUp();
+		$hg->update($asyncRunner);
+		$asyncRunner->synchronize();
 		$this->assertTrue(file_exists($successFile));
 	}
 
@@ -87,7 +91,7 @@ class TestOfHgRunner extends UnitTestCase {
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$this->expectException();
-		$hg->unbundle('randomfilethatdoesntexist');
+		$hg->unbundle('randomfilethatdoesntexist', new AsyncRunner('randomfilethatdoesntexist'));
 	}
 
 	function testGetTip_IdExists_ReturnsHash() {

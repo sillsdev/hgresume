@@ -307,7 +307,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
 
-	function testPullBundleChunk_PullUntilFinishedOnTwoBranchRepo_AssembledBundleIsValid() {
+	function testPullBundleChunk_PullFromBaseRevisionUntilFinishedOnTwoBranchRepo_AssembledBundleIsValid() {
 		$offset = 0;
 		$chunkSize = 50;
 		$transId = __FUNCTION__;
@@ -329,6 +329,44 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$wholeBundle = file_get_contents(TestPath . "/data/sample2branch.bundle");
 		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
+
+
+	function testPullBundleChunk_PullFromTwoBaseRevisionsUntilFinishedOnTwoBranchRepo_AssembledBundleIsValid() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = __FUNCTION__;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sample2branchHgRepo.zip");
+		$this->api->finishPullBundle($transId); // reset things on server
+		$hashes = explode('|', trim(file_get_contents(TestPath . "/data/sample2branch2base.hash")));
+
+		$assembledBundle = '';
+		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
+		while (mb_strlen($assembledBundle) < $bundleSize) {
+			$response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, $offset, $chunkSize, $transId, true);
+			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+			$bundleSize = $response->Values['bundleSize'];
+			$chunkSize = $response->Values['chunkSize'];
+			$chunkData = $response->Content;
+			$assembledBundle .= $chunkData;
+			$offset += $chunkSize;
+		}
+		$wholeBundle = file_get_contents(TestPath . "/data/sample2branch2base.bundle");
+		$this->assertEqual($wholeBundle, $assembledBundle);
+	}
+
+
+	function testPullBundleChunk_2BranchRepoNoChanges_ReturnsNoChange() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = __FUNCTION__;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sample2branchHgRepo.zip");
+		$this->api->finishPullBundle($transId); // reset things on server
+		$hashes = explode('|', trim(file_get_contents(TestPath . "/data/sample2branch2tip.hash")));
+
+		$response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, $offset, $chunkSize, $transId, true);
+		$this->assertEqual(HgResumeResponse::NOCHANGE, $response->Code);
+	}
+
 
 	function testPullBundleChunk_PullUntilFinishedThenRepoChanges_AssembledBundleIsValidAndResetCodeReceivedFromFinishPullBundle() {
 		$offset = 0;
@@ -415,6 +453,34 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$response = $this->api->isAvailable();
 		$this->assertEqual(HgResumeResponse::NOTAVAILABLE, $response->Code);
 		$this->assertEqual($message, $response->Content);
+	}
+
+	// as it turns out, there are two kinds of unrelated bundles, one which upon running "hg incoming" returns "unknown parent" and a different kind of bundle which returns "parent:  -1"
+
+	function testPushBundleChunk_pushBundleFromUnrelatedRepo1_FailCodeWithMessage() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$transId = __FUNCTION__;
+		$this->api->finishPushBundle($transId);
+
+		$bundleData = file_get_contents(TestPath . "/data/unrelated.bundle");
+		$bundleSize = mb_strlen($bundleData, "8bit");
+		//$chunkData = mb_substr($bundleData, 0, 50, "8bit");
+		//$actualChunkSize = mb_strlen($chunkData, "8bit");
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $bundleSize, 0, $bundleData, $transId);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
+	}
+
+	function testPushBundleChunk_pushBundleFromUnrelatedRepo2_FailCodeWithMessage() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$transId = __FUNCTION__;
+		$this->api->finishPushBundle($transId);
+
+		$bundleData = file_get_contents(TestPath . "/data/unrelated2.bundle");
+		$bundleSize = mb_strlen($bundleData, "8bit");
+		//$chunkData = mb_substr($bundleData, 0, 50, "8bit");
+		//$actualChunkSize = mb_strlen($chunkData, "8bit");
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $bundleSize, 0, $bundleData, $transId);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
 }
 
