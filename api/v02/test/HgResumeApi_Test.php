@@ -394,12 +394,27 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($message, $response->Content);
 	}
 
-	function testPushBundleChunk_pushBundleFromUnrelatedRepo_FailCodeWithMessage() {
+	// as it turns out, there are two kinds of unrelated bundles, one which upon running "hg incoming" returns "unknown parent" and a different kind of bundle which returns "parent:  -1"
+
+	function testPushBundleChunk_pushBundleFromUnrelatedRepo1_FailCodeWithMessage() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$transId = __FUNCTION__;
 		$this->api->finishPushBundle($transId);
 
 		$bundleData = file_get_contents(TestPath . "/data/unrelated.bundle");
+		$bundleSize = mb_strlen($bundleData, "8bit");
+		//$chunkData = mb_substr($bundleData, 0, 50, "8bit");
+		//$actualChunkSize = mb_strlen($chunkData, "8bit");
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $bundleSize, 0, $bundleData, $transId);
+		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
+	}
+
+	function testPushBundleChunk_pushBundleFromUnrelatedRepo2_FailCodeWithMessage() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$transId = __FUNCTION__;
+		$this->api->finishPushBundle($transId);
+
+		$bundleData = file_get_contents(TestPath . "/data/unrelated2.bundle");
 		$bundleSize = mb_strlen($bundleData, "8bit");
 		//$chunkData = mb_substr($bundleData, 0, 50, "8bit");
 		//$actualChunkSize = mb_strlen($chunkData, "8bit");

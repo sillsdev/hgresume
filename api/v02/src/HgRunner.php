@@ -38,10 +38,13 @@ class HgRunner {
 		$asyncRunner->run($cmd);
 		$asyncRunner->synchronize();
 		$output = $asyncRunner->getOutput();
-		if (strstr($output, "abort") && strstr($output, "unknown parent")) {
+		if (preg_match('/abort:.*unknown parent/', $output)) {
 			throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
 		}
-		if (strstr($output, "abort") && strstr($output, "not a Mercurial bundle")) {
+		if (preg_match('/parent:\s*-1:/', $output)) {
+			throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
+		}
+		if (preg_match('/abort:.*not a Mercurial bundle/', $output)) {
 			throw new Exception("Project cannot be updated!  (corrupt bundle pushed to repo)");
 		}
 
