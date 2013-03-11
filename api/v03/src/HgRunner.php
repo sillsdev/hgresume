@@ -61,7 +61,7 @@ class HgRunner {
 	}
 
 	/**
-	 * @param string $baseHashes[]
+	 * @param string $baseHashes[] expects the data to be just the "hash" and NOT the branch information preceded by a colon
 	 * @param string $bundleFilePath
 	 * @param AsyncRunner $asyncRunner
 	 */
@@ -85,21 +85,21 @@ class HgRunner {
 	 * helper function, mostly for tests
 	 * @param string $baseHashes[]
 	 * @param string $bundleFilePath
-	 * @param AsyncRunner $asyncRunner
+	 * @param string $asyncRunner
 	 */
 	function makeBundleAndWaitUntilFinished($baseHashes, $bundleFilePath, $asyncRunner) {
 		$this->makeBundle($baseHashes, $bundleFilePath, $asyncRunner);
-		while (true) {
-			if ($asyncRunner->isComplete()) {
-				break;
-			}
-			usleep(1000);
-		}
+		$asyncRunner->synchronize();
 	}
+
+	/**
+	 *
+	 * @return string a baseHash (without branch information)
+	 */
 
 	function getTip() {
 		$revisionArray = $this->getRevisions(0, 1);
-		return $revisionArray[0];
+		return substr($revisionArray[0], 0, strpos($revisionArray[0], ':'));
 	}
 
 	function getBranchTips() {
@@ -143,7 +143,7 @@ class HgRunner {
 		if (count($output) == 0) {
 			exec('hg tip --template "{rev}:{branch}\n"', $output2, $returnval);
 
-			if (count($output2) == 1 and startsWith($output2[0], "-1")) {
+			if (count($output2) == 1 and strpos($output2[0], "-1") === 0) { // starts with -1
 				//in the case of a tip result like '-1:default' we will return '0:default' to signal the empty repo
 				$output2[0] = preg_replace('/^-1/', '0', $output2[0]);
 				return $output2; //
@@ -154,6 +154,9 @@ class HgRunner {
 	}
 
 	function isValidBase($hashes) {
+		if (!is_array($hashes)) {
+			$hashes = array($hashes);
+		}
 		if (count($hashes) == 1 && $hashes[0] == "0") { // special case indicating revision 0
 			return true;
 		}
@@ -167,7 +170,7 @@ class HgRunner {
 			}
 			foreach($revisions as $hashandbranch) {
 				$rev = substr($hashandbranch, 0, strpos($hashandbranch, ":"));
-				if (array_search($rev, (array)$hashes, false) !== false) {
+				if (array_search($rev, $hashes, false) !== false) {
 					$foundHash++;
 					if($foundHash >= count($hashes)) {
 						break;

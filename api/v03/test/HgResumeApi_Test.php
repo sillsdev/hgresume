@@ -19,21 +19,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->testEnvironment->dispose();
 	}
 
-	function testGetTip_IdExists_ReturnsSuccessCodeAndHash() {
-		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
-		$repoId = $this->testEnvironment->RepoId;
-		$response = $this->api->getTip($repoId);
-		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
-
-		$this->assertEqual($response->Values['Tip'], trim(file_get_contents(TestPath . "/data/sample.bundle.hash")));
-	}
-
-	function testGetTip_IdNotExists_ReturnsFailCode() {
-		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
-		$response = $this->api->getTip('invalidid');
-		$this->assertEqual(HgResumeResponse::UNKNOWNID, $response->Code);
-	}
-
 	// finishPullBundle is a wrapper for BundleHelper->cleanUpPull, and that is already tested
 
 	// finishPushBundle is a wrapper for BundleHelper->cleanUpPush, and that is already tested
@@ -363,7 +348,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->api->finishPullBundle($transId); // reset things on server
 		$hashes = explode('|', trim(file_get_contents(TestPath . "/data/sample2branch2tip.hash")));
 
-		$response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, $offset, $chunkSize, $transId, true);
+		$response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, 0, 500, $transId, true);
 		$this->assertEqual(HgResumeResponse::NOCHANGE, $response->Code);
 	}
 

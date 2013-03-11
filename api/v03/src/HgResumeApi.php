@@ -171,7 +171,7 @@ class HgResumeAPI {
 	/**
 	 *
 	 * @param string $repoId
-	 * @param array[string] $baseHashes
+	 * @param array[string] $baseHashes expects just hashes, NOT hashes with a branch name appended
 	 * @param int $offset
 	 * @param int $chunkSize
 	 * @param string $transId
@@ -181,6 +181,9 @@ class HgResumeAPI {
 	 */
 	function pullBundleChunkInternal($repoId, $baseHashes, $offset, $chunkSize, $transId, $waitForBundleToFinish) {
 		try {
+			if (!is_array($baseHashes)) {
+				$baseHashes = array($baseHashes);
+			}
 			$availability = $this->isAvailable();
 			if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
 				return $availability;
@@ -210,8 +213,19 @@ class HgResumeAPI {
 			// Good to go ...
 			// ------------------
 			// If every requested baseHash is a branch tip then no pull is necessary
-			if (array_count_values(array_diff((array)$baseHashes, $hg->getBranchTips())) == 0) {
-				return new HgResumeResponse(HgResumeResponse::NOCHANGE);
+			sort($baseHashes);
+			$branchTips = $hg->getBranchTips();
+			sort($branchTips);
+			if (count($baseHashes) == count($branchTips)) {
+				$areEqual = true;
+				for ($i = 0; $i < count($baseHashes); $i++) {
+					if ($baseHashes[$i] != $branchTips[$i]) {
+						$areEqual = false;
+					}
+				}
+				if ($areEqual) {
+					return new HgResumeResponse(HgResumeResponse::NOCHANGE);
+				}
 			}
 
 			$bundle = new BundleHelper($transId);
@@ -313,30 +327,6 @@ class HgResumeAPI {
 		return $data;
 	}
 
-	// not currently used in C# client
-	function getTip($repoId) {
-		$availability = $this->isAvailable();
-		if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
-			return $availability;
-		}
-		try {
-			$repoPath = $this->getRepoPath($repoId);
-			if ($repoPath) {
-				$hg = new HgRunner($repoPath);
-				$hashandbranch = $hg->getRevisions(0,1);
-				$revision = explode(":", $hashandbranch[0]);
-				$response = array('Tip' => $revision[0]); //just return the hash for the most recent revision
-				$hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, $response);
-			}
-			else {
-				$hgresponse = new HgResumeResponse(HgResumeResponse::UNKNOWNID);
-			}
-		} catch (Exception $e) {
-			$response = array('Error' => substr($e->getMessage(), 0, 1000));
-			$hgresponse = new HgResumeResponse(HgResumeResponse::FAIL, $response);
-		}
-		return $hgresponse;
-	}
 
 	function getRevisions($repoId, $offset, $quantity) {
 		$availability = $this->isAvailable();

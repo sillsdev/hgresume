@@ -109,7 +109,7 @@ class TestOfHgRunner extends UnitTestCase {
 	function testIsValidBase_EmptyHash_False() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
 		$hg = new HgRunner($this->testEnvironment->Path);
-		$this->assertFalse($hg->IsValidBase(''));
+		$this->assertFalse($hg->IsValidBase(array('')));
 	}
 
 	function testIsValidBase_HashExist_True() {
@@ -150,7 +150,7 @@ class TestOfHgRunner extends UnitTestCase {
 	function testGetRevisions_InitializedRepoWIthZeroCHangesets_ReturnsZero() {
 		$this->testEnvironment->makeRepo(TestPath . "/data/emptyHgRepo.zip");
 		$hg = new HgRunner($this->testEnvironment->Path);
-		$this->assertEqual($hg->getRevisions(0,1), array("0"));
+		$this->assertEqual($hg->getRevisions(0,1), array("0:"));
 	}
 
 	function testAddAndCheckInFile_AddFile_TipIsDifferent() {
