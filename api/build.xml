@@ -14,7 +14,7 @@
 	</target>
 
 	<target name="test" depends="prepare">
-		<echo>##teamcity[importData type='junit' path='api/v02/${output.dir}/AllTestsV02.xml']</echo>
+		<echo>##teamcity[importData type='junit' path='api/${output.dir}/AllTestsV02.xml']</echo>
 		<exec executable="php" dir="test" output="${output.dir}/AllTestsV02.xml" error="${output.dir}/errorV02.log" failonerror="true">
 			<arg line="AllTests.php" />
 			<arg value="-j" />
