@@ -43,4 +43,4 @@ Require valid-user
 
 Maintenance Mode
 ---------------------
-If there is ever a reason to shutdown the API temporarily, an admin or a server process can place a text file named maintenance_message.txt in the REPOPATH directory with an appropriate explanation of why the API has been suspended.  All clients connecting to the API will receive the maintenance message.
+If there is ever a reason to shutdown the API temporarily, an admin or a server process can place a text file named maintenance_message.txt in the src directory with an appropriate explanation of why the API has been suspended.  All clients connecting to the API will receive the maintenance message.
