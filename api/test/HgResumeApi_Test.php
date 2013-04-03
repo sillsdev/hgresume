@@ -339,6 +339,24 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
 
+	function testGetRevisions_2BranchRepo_ReturnsTwoBranches() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = __FUNCTION__;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sample2branchHgRepo.zip");
+		$this->api->finishPullBundle($transId); // reset things on server
+		$hashes = explode('|', trim(file_get_contents(TestPath . "/data/sample2branch2tip.hash")));
+
+		$response = $this->api->getRevisions('sample2branchHgRepo', 0, 50);
+		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+		$revisions = explode('|', $response->Content);
+		$branchArray = array();
+		foreach($revisions as $revision) {
+			$hashAndBranch = explode(':', $revision);
+			$branchArray[$hashAndBranch[1]] = 1;
+		}
+		$this->assertEqual(count($branchArray), 2);
+	}
 
 	function testPullBundleChunk_2BranchRepoNoChanges_ReturnsNoChange() {
 		$offset = 0;

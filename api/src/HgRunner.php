@@ -138,10 +138,10 @@ class HgRunner {
 		if(!is_null($branch)) {
 			$cmd .= ' -b ' . $branch;
 		}
-		$cmd .= ' --template "{node|short}:{branch}\n"';
+		$cmd .= ' --template "{node|short}:{branches}\n"';
 		exec($cmd, $output, $returnval);
 		if (count($output) == 0) {
-			exec('hg tip --template "{rev}:{branch}\n"', $output2, $returnval);
+			exec('hg tip --template "{rev}:{branches}\n"', $output2, $returnval);
 
 			if (count($output2) == 1 and strpos($output2[0], "-1") === 0) { // starts with -1
 				//in the case of a tip result like '-1:default' we will return '0:default' to signal the empty repo
