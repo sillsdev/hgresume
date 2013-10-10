@@ -216,6 +216,9 @@ class HgResumeAPI {
 			sort($baseHashes);
 			$branchTips = $hg->getBranchTips();
 			sort($branchTips);
+			if(count($branchTips) == 0) {
+				return new HgResumeResponse(HgResumeResponse::NOCHANGE);
+			}
 			if (count($baseHashes) == count($branchTips)) {
 				$areEqual = true;
 				for ($i = 0; $i < count($baseHashes); $i++) {
