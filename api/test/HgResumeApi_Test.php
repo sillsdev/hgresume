@@ -441,6 +441,16 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
 
+	function testPullBundleChunk_EmptyRepositoryReturnsNoChanges() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = __FUNCTION__;
+		$this->testEnvironment->makeRepo(TestPath . "/data/emptyHgRepo.zip");
+		$this->api->finishPullBundle($transId); // reset things on server
+		$response = $this->api->pullBundleChunkInternal('emptyHgRepo', array("0"), $offset, $chunkSize, $transId, true);
+		$this->assertEqual(HgResumeResponse::NOCHANGE, $response->Code);
+	}
+
 	function testIsAvailable_noMessageFile_SuccessCode() {
 		$messageFilePath = SourcePath . "/maintenance_message.txt";
 		$this->assertFalse(file_exists($messageFilePath));
@@ -456,16 +466,6 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$response = $this->api->isAvailable();
 		$this->assertEqual(HgResumeResponse::NOTAVAILABLE, $response->Code);
 		$this->assertEqual($message, $response->Content);
-	}
-
-	function testPullBundleChunk_EmptyRepositoryReturnsNoChanges() {
-		$offset = 0;
-		$chunkSize = 50;
-		$transId = __FUNCTION__;
-		$this->testEnvironment->makeRepo(TestPath . "/data/emptyHgRepo.zip");
-		$hg = new HgRunner($this->testEnvironment->Path);
-		$response = $this->api->pullBundleChunkInternal('emptyHgRepo', array("0"), $offset, $chunkSize, $transId, true);
-		$this->assertEqual(HgResumeResponse::NOCHANGE, $response->Code);
 	}
 
 	// as it turns out, there are two kinds of unrelated bundles, one which upon running "hg incoming" returns "unknown parent" and a different kind of bundle which returns "parent:  -1"
