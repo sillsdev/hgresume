@@ -1,5 +1,5 @@
+<pre>
 <?php
-
-print phpinfo();
-
+system("hg summary");
 ?>
+</pre>
