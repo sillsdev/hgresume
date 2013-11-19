@@ -412,9 +412,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleLargeBundleHgRepo.zip");
 		$this->api->finishPullBundle($transId); // reset things on server
 
-		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', array("0"), 0, 50, $transId);
-		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
-		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', array("0"), 0, 6000000, $transId);
+		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', array("0"), 0, 10000000, $transId);
 		$this->assertEqual(HgResumeResponse::INPROGRESS, $response->Code);
 	}
 
