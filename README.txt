@@ -1,5 +1,5 @@
-Source code can be pulled from the Hg repository located at:
-http://hg.palaso.org/hgresume
+Source code can be pulled from the Git repository located at:
+https://github.com/sillsdev/hgresume
 
 Installation
 -----------------------
