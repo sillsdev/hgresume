@@ -111,8 +111,10 @@ class HgResumeAPI {
 							sleep(1);
 						}
 						$responseValues = array('transId' => $transId, 'sow' => $newSow);
+						// If the unbundle operation has not completed within 4 seconds (unlikely for a large repo) then we punt back to the client with a RECEIVED.
+						//The client can then initiate another request, and hopefully the unbundle will have finished by then
+						// FUTURE: we should return an INPROGRESS status and have the client display a message accordingly. - cjh 2014-07
 						return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
-						// REVIEW Not sure what returning 'RECEIVED' will do to the client here, we've got all the data but need to wait for the unbundle to finish before sending success
 					} catch (UnrelatedRepoException $e) {
 						$bundle->setOffset(0);
 						$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
@@ -146,7 +148,7 @@ class HgResumeAPI {
 					$responseValues = array('transId' => $transId);
 					return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
 				} else {
-					$responseValues = array('transId' => $transId, 'sow' => $newSow);
+					$responseValues = array('transId' => $transId, 'sow' => $bundle->getOffset());
 					return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
 				}
 				break;
@@ -241,7 +243,7 @@ class HgResumeAPI {
 				// if the client requests an offset greater than 0, but the bundle needed to be created on this request,
 				// send the RESET response since the server's bundle cache has aparently expired.
 				if ($offset > 0) {
-					return new HgResumeResponse(HgResumeResponse::RESET); // TODO Add in error information in here saying that the bundle isn't present CP 2012-06
+					return new HgResumeResponse(HgResumeResponse::RESET, array('Error' => 'Cannot request data for bundle that doesnt exist yet'));
 				}
 				// At this point we can presume that $offset == 0 so this is the first pull request; make a new bundle
 				if ($waitForBundleToFinish) {
