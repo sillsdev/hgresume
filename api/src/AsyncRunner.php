@@ -4,17 +4,17 @@ require_once('HgExceptions.php');
 
 class AsyncRunner
 {
-	private $_baseFilePath;
+	private $_lockFile;
 
-	public function __construct($baseFilePath) {
-		$this->_baseFilePath = $baseFilePath;
+	public function __construct($runFilePath) {
+		$this->_lockFile= "$runFilePath.async_run";
 	}
 
 	/**
 	 * @param string $command The unescaped system command to run
 	 */
 	public function run($command) {
-		$lockFilePath = $this->getLockFilePath();
+		$lockFilePath = $this->_lockFile;
 		$command = escapeshellcmd($command);
 		// The following command redirects all output (include output of the time command) to $finishFilename
 		// The trailing ampersand makes the command run in the background
@@ -27,41 +27,46 @@ class AsyncRunner
 	 * @return bool
 	 */
 	public function isRunning() {
-		return file_exists($this->getLockFilePath());
+		return file_exists($this->_lockFile);
 	}
 
 	/**
 	 * @return bool
 	 */
 	public function isComplete() {
-		$lockFilePath = $this->getLockFilePath();
+		$lockFilePath = $this->_lockFile;
 		if (!file_exists($lockFilePath)) {
 			throw new AsyncRunnerException("Lock file '$lockFilePath' not found, process is not running");
 		}
-		$data = file_get_contents($this->getLockFilePath());
+		$data = file_get_contents($this->_lockFile);
 		if (strpos($data, "AsyncCompleted") !== false) {
 			return true;
 		}
 		return false;
 	}
 
+	/**
+	 * 
+	 * @throws AsyncRunnerException
+	 * @return string
+	 */
 	public function getOutput() {
 		if (!$this->isComplete()) {
-			throw new AsyncRunnerException("Command on '$this->_baseFilePath' not yet complete.");
+			throw new AsyncRunnerException("Command on '$this->_lockFile' not yet complete.");
 		}
-		return file_get_contents($this->getLockFilePath());
+		return file_get_contents($this->_lockFile);
 	}
 
 	public function cleanUp() {
-		if (file_exists($this->getLockFilePath())) {
-			unlink($this->getLockFilePath());
+		if (file_exists($this->_lockFile)) {
+			unlink($this->_lockFile);
 		}
 	}
 
-	private function getLockFilePath() {
-		return $this->_baseFilePath . '.isFinished';
-	}
-
+	/**
+	 * 
+	 * @throws AsyncRunnerException
+	 */
 	public function synchronize() {
 		for ($i = 0; $i < 200; $i++) {
 			if ($this->isComplete()) {

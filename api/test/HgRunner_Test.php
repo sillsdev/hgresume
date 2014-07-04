@@ -35,11 +35,10 @@ class TestOfHgRunner extends UnitTestCase {
 
 		// check for success file
 		$hg = new HgRunner($repoPath);
-		$asyncRunner = new AsyncRunner($bundleFile);
-		$hg->unbundle($bundleFile, $asyncRunner);
+		$asyncRunner = $hg->unbundle($bundleFile);
 		$asyncRunner->synchronize();
 		$asyncRunner->cleanUp();
-		$hg->update($asyncRunner);
+		$asyncRunner = $hg->update();
 		$asyncRunner->synchronize();
 		$this->assertTrue(file_exists($successFile));
 	}
@@ -72,8 +71,7 @@ class TestOfHgRunner extends UnitTestCase {
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$bundleFilePath = $repoPath . '/bundle';
-		$asyncRunner = new AsyncRunner($bundleFilePath);
-		$hg->makeBundleAndWaitUntilFinished('whateverhash', $bundleFilePath, $asyncRunner);
+		$asyncRunner = $hg->makeBundleAndWaitUntilFinished('whateverhash', $bundleFilePath);
 		$this->assertTrue(BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput()));
 	}
 /*
@@ -91,7 +89,7 @@ class TestOfHgRunner extends UnitTestCase {
 		$repoPath = $this->testEnvironment->Path;
 		$hg = new HgRunner($repoPath);
 		$this->expectException();
-		$hg->unbundle('randomfilethatdoesntexist', new AsyncRunner('randomfilethatdoesntexist'));
+		$hg->unbundle('randomfilethatdoesntexist');
 	}
 
 	function testGetTip_IdExists_ReturnsHash() {

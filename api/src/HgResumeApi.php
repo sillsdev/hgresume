@@ -95,8 +95,7 @@ class HgResumeAPI {
 					$bundle->setState(BundleHelper::State_Unbundle);
 					try {  // REVIEW Would be nice if the try / catch logic was universal. ie one policy for the api function. CP 2012-06
 						$bundleFilePath = $bundle->getBundleFileName();
-						$asyncRunner = new AsyncRunner($bundleFilePath);
-						$hg->unbundle($bundleFilePath, $asyncRunner);
+						$asyncRunner = $hg->unbundle($bundleFilePath);
 						for ($i = 0; $i < 4; $i++) {
 							if ($asyncRunner->isComplete()) {
 								if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
@@ -234,11 +233,11 @@ class HgResumeAPI {
 			}
 
 			$bundle = new BundleHelper($transId);
-			$asyncRunner = new AsyncRunner($bundle->getBundleBaseFilePath());
 
 			$bundleCreatedInThisExecution = false;
 			$bundleFilename = $bundle->getBundleFileName();
 
+			$asyncRunner = new AsyncRunner($bundleFilename);
 			if (!$bundle->exists()) {
 				// if the client requests an offset greater than 0, but the bundle needed to be created on this request,
 				// send the RESET response since the server's bundle cache has aparently expired.
@@ -247,9 +246,9 @@ class HgResumeAPI {
 				}
 				// At this point we can presume that $offset == 0 so this is the first pull request; make a new bundle
 				if ($waitForBundleToFinish) {
-					$hg->makeBundleAndWaitUntilFinished($baseHashes, $bundleFilename, $asyncRunner);
+					$asyncRunner = $hg->makeBundleAndWaitUntilFinished($baseHashes, $bundleFilename);
 				} else {
-					$hg->makeBundle($baseHashes, $bundleFilename, $asyncRunner);
+					$asyncRunner = $hg->makeBundle($baseHashes, $bundleFilename);
 				}
 				$bundle->setProp("tip", $hg->getTip());
 				$bundle->setProp("repoId", $repoId);
@@ -267,19 +266,7 @@ class HgResumeAPI {
 						}
 						$bundle->setState(BundleHelper::State_Downloading);
 					}
-					// TODO turn this into a for loop $i = 0, 1 CP 2012-06
-					clearstatcache(); // clear filesize() cache so that we can get accurate answers to the filesize() function
-					if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
-						$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
-						$response->Values = array(
-								'bundleSize' => filesize($bundleFilename),
-								'chunkSize' => mb_strlen($data, "8bit"),
-								'transId' => $transId);
-						$response->Content = $data;
-					} else {
-						sleep(4);
-						clearstatcache(); // clear filesize() cache
-						// try a second time to get a chunk below bundle size
+					for ($i = 0; $i < 7; $i++) {
 						if ($this->canGetChunkBelowBundleSize($bundleFilename, $chunkSize, $offset)) {
 							$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
 							$response->Values = array(
@@ -287,10 +274,11 @@ class HgResumeAPI {
 									'chunkSize' => mb_strlen($data, "8bit"),
 									'transId' => $transId);
 							$response->Content = $data;
-						} else {
-							$response = new HgResumeResponse(HgResumeResponse::INPROGRESS);
+							break 2; // break out of the loop and the switch statement
 						}
+						sleep(2);
 					}
+					$response = new HgResumeResponse(HgResumeResponse::INPROGRESS);
 					break;
 				case BundleHelper::State_Downloading:
 					$data = $this->getChunk($bundleFilename, $chunkSize, $offset);
@@ -314,6 +302,7 @@ class HgResumeAPI {
 	}
 
 	private static function canGetChunkBelowBundleSize($filename, $chunkSize, $offset) {
+		clearstatcache(); // clear filesize() cache so that we can get accurate answers to the filesize() function
 		if (is_file($filename) and $offset + $chunkSize < filesize($filename)) {
 			return true;
 		}
