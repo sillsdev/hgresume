@@ -32,9 +32,9 @@ class TestOfAsyncRunner extends UnitTestCase {
 	function testCleanUp_FileRemoved() {
 		$runner = new AsyncRunner('/tmp/testFile');
 		$runner->run('echo foo');
-		$this->assertTrue(file_exists('/tmp/testFile.isFinished'));
+		$this->assertTrue(file_exists('/tmp/testFile.async_run'));
 		$runner->cleanUp();
-		$this->assertFalse(file_exists('/tmp/testFile.isFinished'));
+		$this->assertFalse(file_exists('/tmp/testFile.async_run'));
 	}
 
 	function testGetOutput_NotComplete_Throws() {

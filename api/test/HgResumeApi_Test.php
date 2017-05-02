@@ -339,6 +339,24 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->assertEqual($wholeBundle, $assembledBundle);
 	}
 
+	function testGetRevisions_2BranchRepo_ReturnsTwoBranches() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = __FUNCTION__;
+		$this->testEnvironment->makeRepo(TestPath . "/data/sample2branchHgRepo.zip");
+		$this->api->finishPullBundle($transId); // reset things on server
+		$hashes = explode('|', trim(file_get_contents(TestPath . "/data/sample2branch2tip.hash")));
+
+		$response = $this->api->getRevisions('sample2branchHgRepo', 0, 50);
+		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+		$revisions = explode('|', $response->Content);
+		$branchArray = array();
+		foreach($revisions as $revision) {
+			$hashAndBranch = explode(':', $revision);
+			$branchArray[$hashAndBranch[1]] = 1;
+		}
+		$this->assertEqual(count($branchArray), 2);
+	}
 
 	function testPullBundleChunk_2BranchRepoNoChanges_ReturnsNoChange() {
 		$offset = 0;
@@ -394,9 +412,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$this->testEnvironment->makeRepo(TestPath . "/data/sampleLargeBundleHgRepo.zip");
 		$this->api->finishPullBundle($transId); // reset things on server
 
-		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', array("0"), 0, 50, $transId);
-		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
-		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', array("0"), 0, 6000000, $transId);
+		$response = $this->api->pullBundleChunk('sampleLargeBundleHgRepo', array("0"), 0, 10000000, $transId);
 		$this->assertEqual(HgResumeResponse::INPROGRESS, $response->Code);
 	}
 
@@ -421,6 +437,16 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		}
 		$wholeBundle = file_get_contents(TestPath . "/data/sample_entire.bundle");
 		$this->assertEqual($wholeBundle, $assembledBundle);
+	}
+
+	function testPullBundleChunk_EmptyRepositoryReturnsNoChanges() {
+		$offset = 0;
+		$chunkSize = 50;
+		$transId = __FUNCTION__;
+		$this->testEnvironment->makeRepo(TestPath . "/data/emptyHgRepo.zip");
+		$this->api->finishPullBundle($transId); // reset things on server
+		$response = $this->api->pullBundleChunkInternal('emptyHgRepo', array("0"), $offset, $chunkSize, $transId, true);
+		$this->assertEqual(HgResumeResponse::NOCHANGE, $response->Code);
 	}
 
 	function testIsAvailable_noMessageFile_SuccessCode() {

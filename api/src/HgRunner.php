@@ -3,10 +3,25 @@
 require_once('AsyncRunner.php');
 
 class HgRunner {
-	var $repoPath;
-	var $logState;
+	/**
+	 * 
+	 * @var string
+	 */
+	public $repoPath;
+
+	/**
+	 * 
+	 * @var bool
+	 */
+	public $logState;
+
 	const DEFAULT_HG = "/var/vcs/public";
 
+	/**
+	 * 
+	 * @param string $repoPath
+	 * @throws ValidationException
+	 */
 	function __construct($repoPath = DEFAULT_HG) {
 		if (is_dir($repoPath)) {
 			$this->repoPath = $repoPath;
@@ -26,7 +41,15 @@ class HgRunner {
 		file_put_contents($logFilename, "$message\n", FILE_APPEND | LOCK_EX);
 	}
 
-	function unbundle($filepath, $asyncRunner) {
+	/**
+	 * 
+	 * @param string $filepath
+	 * @throws HgException
+	 * @throws UnrelatedRepoException
+	 * @throws Exception
+	 * @return AsyncRunner
+	 */
+	function unbundle($filepath) {
 		if (!is_file($filepath)) {
 			throw new HgException("bundle file '$filepath' is not a file!");
 		}
@@ -35,6 +58,7 @@ class HgRunner {
 		// run hg incoming to make sure this bundle is related to the repo
 		$cmd = "hg incoming $filepath";
 		$this->logEvent("cmd: $cmd");
+		$asyncRunner = new AsyncRunner($filepath . ".incoming");
 		$asyncRunner->run($cmd);
 		$asyncRunner->synchronize();
 		$output = $asyncRunner->getOutput();
@@ -50,22 +74,34 @@ class HgRunner {
 
 		$cmd = "hg unbundle $filepath";
 		$this->logEvent("cmd: $cmd");
+		$asyncRunner = new AsyncRunner($filepath);
 		$asyncRunner->run($cmd);
+		return $asyncRunner;
+	}
+	
+	function assertIsRelatedRepo($bundleFilePath) {
+		
 	}
 
-	function update($asyncRunner, $revision = "") {
+	/**
+	 * 
+	 * @param string $revision
+	 * @return AsyncRunner
+	 */
+	function update($revision = "") {
 		chdir($this->repoPath);
 		$cmd = "hg update $revision";
 		$this->logEvent("cmd: $cmd");
+		$asyncRunner = new AsyncRunner($this->repoPath . "/hg_update");
 		$asyncRunner->run($cmd);
+		return $asyncRunner;
 	}
 
 	/**
 	 * @param string $baseHashes[] expects the data to be just the "hash" and NOT the branch information preceded by a colon
 	 * @param string $bundleFilePath
-	 * @param AsyncRunner $asyncRunner
 	 */
-	function makeBundle($baseHashes, $bundleFilePath, $asyncRunner) {
+	function makeBundle($baseHashes, $bundleFilePath) {
 		chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
 		if (count($baseHashes) == 1 && $baseHashes[0] == "0") {
 			$cmd = "hg bundle --all $bundleFilePath";
@@ -78,18 +114,20 @@ class HgRunner {
 			}
 			$cmd .= $bundleFilePath;
 		}
+		$asyncRunner = new AsyncRunner($bundleFilePath);
 		$asyncRunner->run($cmd);
+		return $asyncRunner;
 	}
 
 	/**
 	 * helper function, mostly for tests
 	 * @param string $baseHashes[]
 	 * @param string $bundleFilePath
-	 * @param string $asyncRunner
 	 */
-	function makeBundleAndWaitUntilFinished($baseHashes, $bundleFilePath, $asyncRunner) {
-		$this->makeBundle($baseHashes, $bundleFilePath, $asyncRunner);
+	function makeBundleAndWaitUntilFinished($baseHashes, $bundleFilePath) {
+		$asyncRunner = $this->makeBundle($baseHashes, $bundleFilePath);
 		$asyncRunner->synchronize();
+		return $asyncRunner;
 	}
 
 	/**
@@ -138,10 +176,10 @@ class HgRunner {
 		if(!is_null($branch)) {
 			$cmd .= ' -b ' . $branch;
 		}
-		$cmd .= ' --template "{node|short}:{branch}\n"';
+		$cmd .= ' --template "{node|short}:{branches}\n"';
 		exec($cmd, $output, $returnval);
 		if (count($output) == 0) {
-			exec('hg tip --template "{rev}:{branch}\n"', $output2, $returnval);
+			exec('hg tip --template "{rev}:{branches}\n"', $output2, $returnval);
 
 			if (count($output2) == 1 and strpos($output2[0], "-1") === 0) { // starts with -1
 				//in the case of a tip result like '-1:default' we will return '0:default' to signal the empty repo
