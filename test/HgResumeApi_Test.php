@@ -1,7 +1,7 @@
 <?php
 
-require_once(SRC_PATH . "/HgResumeApi.php");
-require_once(SRC_PATH . "/HgResumeResponse.php");
+require_once(LIB_PATH . "/HgResumeApi.php");
+require_once(LIB_PATH . "/HgResumeResponse.php");
 
 class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
 

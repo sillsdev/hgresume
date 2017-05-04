@@ -5,6 +5,9 @@ $rootPath = realpath(__DIR__ . '/..') . DIRECTORY_SEPARATOR;
 if (! defined('SRC_PATH')) {
     define('SRC_PATH', $rootPath . 'src/');
 }
+if (! defined('LIB_PATH')) {
+    define('LIB_PATH', $rootPath . 'src/lib/');
+}
 
 if (!defined('TEST_PATH')) {
     define('TEST_PATH', $rootPath . 'test/');

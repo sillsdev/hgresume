@@ -1,6 +1,6 @@
 <?php
 
-require_once(SRC_PATH . "/HgResumeResponse.php");
+require_once(LIB_PATH . "/HgResumeResponse.php");
 
 class TestOfHgResumeResponse extends PHPUnit_Framework_TestCase {
 

@@ -1,7 +1,7 @@
 <?php
 
-require_once(SRC_PATH . "HgExceptions.php");
-require_once(SRC_PATH . "/BundleHelper.php");
+require_once(LIB_PATH . "HgExceptions.php");
+require_once(LIB_PATH . "/BundleHelper.php");
 
 class TestOfBundleHelper extends PHPUnit_Framework_TestCase {
 

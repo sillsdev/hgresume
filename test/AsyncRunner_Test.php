@@ -1,6 +1,6 @@
 <?php
 
-require_once(SRC_PATH . "/AsyncRunner.php");
+require_once(LIB_PATH . "AsyncRunner.php");
 
 class TestOfAsyncRunner extends PHPUnit_Framework_TestCase {
 

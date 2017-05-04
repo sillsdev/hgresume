@@ -1,7 +1,7 @@
 <?php
 
-require_once(SRC_PATH . "/HgRunner.php");
-require_once(SRC_PATH . "/BundleHelper.php");
+require_once(LIB_PATH . "/HgRunner.php");
+require_once(LIB_PATH . "/BundleHelper.php");
 
 class TestOfHgRunner extends PHPUnit_Framework_TestCase {
 

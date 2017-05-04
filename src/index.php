@@ -1,8 +1,8 @@
 <?php
 
-require_once('src/config.php');
-require_once('src/RestServer.php');
-require_once('src/HgResumeApi.php');
+require_once('config.php');
+require_once('lib/RestServer.php');
+require_once('lib/HgResumeApi.php');
 
 //$repoPath = sys_get_temp_dir() . "/hgresume_repoTestEnvironment";
 $api = new HgResumeAPI($repoSearchPaths);
