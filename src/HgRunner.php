@@ -4,13 +4,13 @@ require_once('AsyncRunner.php');
 
 class HgRunner {
 	/**
-	 * 
+	 *
 	 * @var string
 	 */
 	public $repoPath;
 
 	/**
-	 * 
+	 *
 	 * @var bool
 	 */
 	public $logState;
@@ -18,7 +18,7 @@ class HgRunner {
 	const DEFAULT_HG = "/var/vcs/public";
 
 	/**
-	 * 
+	 *
 	 * @param string $repoPath
 	 * @throws ValidationException
 	 */
@@ -42,7 +42,7 @@ class HgRunner {
 	}
 
 	/**
-	 * 
+	 *
 	 * @param string $filepath
 	 * @throws HgException
 	 * @throws UnrelatedRepoException
@@ -78,13 +78,13 @@ class HgRunner {
 		$asyncRunner->run($cmd);
 		return $asyncRunner;
 	}
-	
+
 	function assertIsRelatedRepo($bundleFilePath) {
-		
+
 	}
 
 	/**
-	 * 
+	 *
 	 * @param string $revision
 	 * @return AsyncRunner
 	 */
@@ -168,7 +168,7 @@ class HgRunner {
 	//this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
 	function getRevisionsInternal($offset, $quantity, $branch) {
 		if ($quantity < 1) {
-			throw new ValidationException("quantity parameter much be larger than 0");
+			throw new ValidationException("quantity parameter must be larger than 0");
 		}
 		chdir($this->repoPath);
 		// I believe ':' is illegal in branch names, it is in tag, so we will use that to split the hash and branch

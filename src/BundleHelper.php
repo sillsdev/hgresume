@@ -1,5 +1,7 @@
 <?php
 
+require_once 'HgExceptions.php';
+
 class BundleHelper {
 
 	const State_Start       = 'Start';
