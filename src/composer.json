@@ -8,8 +8,8 @@
   },
   "autoload": {
     "psr-4": {
-      "Api\\": "api",
-      "Site\\": "site"
+      "Lib\\": "lib/",
+      "Lib\\Exception\\": "lib/exception/"
     }
   }
 }

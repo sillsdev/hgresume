@@ -1,7 +1,6 @@
 <?php
 
-require_once(LIB_PATH . "HgExceptions.php");
-require_once(LIB_PATH . "/BundleHelper.php");
+use Lib\BundleHelper;
 
 class TestOfBundleHelper extends PHPUnit_Framework_TestCase {
 
@@ -19,7 +18,7 @@ class TestOfBundleHelper extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * @expectedException ValidationException
+     * @expectedException \Lib\Exception\ValidationException
      * @expectedExceptionMessage did not validate as alpha numeric!
      */
     function testConstructor_TransIdCodeInjection_ThrowsException() {

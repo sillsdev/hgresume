@@ -1,6 +1,6 @@
 <?php
 
-require_once(LIB_PATH . "AsyncRunner.php");
+use Lib\AsyncRunner;
 
 class TestOfAsyncRunner extends PHPUnit_Framework_TestCase {
 
@@ -13,7 +13,7 @@ class TestOfAsyncRunner extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException \Lib\Exception\AsyncRunnerException
      * @expectedExceptionMessage Lock file '/tmp/testFile.async_run' not found
      */
     function testIsComplete_WithNoRun_Throws() {
@@ -39,7 +39,7 @@ class TestOfAsyncRunner extends PHPUnit_Framework_TestCase {
     }
 
     /**
-     * @expectedException Exception
+     * @expectedException \Lib\Exception\AsyncRunnerException
      * @expectedExceptionMessage Command on '/tmp/testFile.async_run' not yet complete.
      */
     function testGetOutput_NotComplete_Throws() {
