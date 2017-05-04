@@ -1,5 +1,6 @@
 <?php
 
+use Lib\AsyncRunner;
 use Lib\HgRunner;
 use Lib\BundleHelper;
 
