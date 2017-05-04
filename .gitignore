@@ -1,1 +1,10 @@
 .idea/
+node_modules/
+src/vendor/
+test/CodeCoverage/
+
+# lock file for AsyncRunner
+sample.bundle.incoming.async_run
+
+PhpUnitTests.xml
+

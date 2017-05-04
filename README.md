@@ -34,6 +34,51 @@ PerlSetVar db_pass password
 Require valid-user
 ```
 
+8) Install Mercurial and the PHP zip extension
+```
+sudo apt-get install mercurial php7.0-zip
+sudo service apache2 restart
+```
+
+## Updating dependencies ##
+Occasionally developers need to update composer or npm:
+
+#### Update npm packages ####
+
+In the **root** folder: `npm install`
+
+#### Update composer ####
+
+In the **src** folder: `composer install`
+
+## Testing ##
+
+### PHP Unit Tests ###
+
+Unit testing currently uses [PHPUnit](https://phpunit.de/) which was already installed by composer.
+
+#### Integrating PHPUnit with PhpStorm ####
+
+**File** -> **Settings** -> **Languages & Frameworks** -> **PHP** -> **PHPUnit**
+
+Under PHPUnit Library, select `Use Composer autoloader` option
+For `Path to script` browse to `hgresume/src/vendor/autoload.php`
+
+Under Test Runner
+
+Select *Default configuration file* and browse to `hgresume/test/phpunit.xml`
+
+Select *Default bootstrap file* and browse to `hgresume/test/testconfig.php`
+
+#### Running the tests ####
+In a terminal, `gulp test-php-run`.  This will run the unit tests.
+
+To test with debug info `gulp test-php-run --debug true`
+
+To test with code coverage `gulp test-php-run --coverage true`.  
+This will generate test coverage report in `test/CodeCoverage/index.html`. 
+
+To run tests in PhpStorm, browse to the project view, right-click `test` folder and select `Run 'test'`.
 
 ## Maintenance Mode ##
 If there is ever a reason to shutdown the API temporarily, an admin or a server process can place a text file named maintenance_message.txt in the src directory with an appropriate explanation of why the API has been suspended.  All clients connecting to the API will receive the maintenance message.

@@ -1,0 +1,16 @@
+{
+  "name": "hgresume",
+  "description": "Provides a server API to transfer Hg bundles that can be retried/retransmitted",
+  "require-dev": {
+    "phpunit/phpunit": "4.8.*",
+    "phpunit/php-code-coverage": "^2",
+    "guzzlehttp/guzzle": "~5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Api\\": "api",
+      "Site\\": "site"
+    }
+  }
+}
+
