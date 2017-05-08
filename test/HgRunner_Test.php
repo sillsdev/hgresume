@@ -1,7 +1,8 @@
 <?php
 
-require_once(LIB_PATH . "/HgRunner.php");
-require_once(LIB_PATH . "/BundleHelper.php");
+use Lib\AsyncRunner;
+use Lib\HgRunner;
+use Lib\BundleHelper;
 
 class TestOfHgRunner extends PHPUnit_Framework_TestCase {
 

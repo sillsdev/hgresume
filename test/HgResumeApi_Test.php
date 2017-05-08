@@ -1,7 +1,8 @@
 <?php
 
-require_once(LIB_PATH . "/HgResumeApi.php");
-require_once(LIB_PATH . "/HgResumeResponse.php");
+use Lib\HgResumeApi;
+use Lib\HgResumeResponse;
+use Lib\HgRunner;
 
 class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
 
@@ -181,13 +182,6 @@ class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
         }
     }
 
-
-
-
-
-
-
-
     function testPullBundleChunk_EmptyId_UnknownCode() {
         $this->testEnvironment->makeRepo(TEST_PATH . "/data/sampleHgRepo.zip");
         $transId = __FUNCTION__;
@@ -313,7 +307,6 @@ class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
         $this->assertEquals($wholeBundle, $assembledBundle);
     }
 
-
     function testPullBundleChunk_PullFromTwoBaseRevisionsUntilFinishedOnTwoBranchRepo_AssembledBundleIsValid() {
         $offset = 0;
         $chunkSize = 50;
@@ -367,7 +360,6 @@ class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
         $response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, 0, 500, $transId, true);
         $this->assertEquals(HgResumeResponse::NOCHANGE, $response->Code);
     }
-
 
     function testPullBundleChunk_PullUntilFinishedThenRepoChanges_AssembledBundleIsValidAndResetCodeReceivedFromFinishPullBundle() {
         $offset = 0;

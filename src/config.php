@@ -1,8 +1,8 @@
 <?php
 
-$rootPath = dirname(__FILE__);
+$rootPath = realpath(__DIR__ .'/..') . DIRECTORY_SEPARATOR;
 
-define('SourcePath', $rootPath);
+define('SourcePath', $rootPath.'src/');
 
 define("API_VERSION", 3);
 define('CACHE_PATH', "/var/cache/hgresume");
