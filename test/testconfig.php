@@ -13,9 +13,9 @@ if (!defined('TEST_PATH')) {
     define('TEST_PATH', $rootPath . 'test/');
 }
 
-require_once(SRC_PATH . 'config.php');
-
 require_once SRC_PATH . 'vendor/autoload.php';
+
+require_once(SRC_PATH . 'config.php');
 
 require_once TEST_PATH . 'HgRepoTestEnvironment.php';
 
