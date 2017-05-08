@@ -41,37 +41,37 @@ Authen::Simple::LDAP (and IO::Socket::SSL if LDAPS is used):
    ## else
    # PerlModule Apache::Authn::Redmine
    <Location /svn>
-	 DAV svn
-	 SVNParentPath "/var/svn"
+     DAV svn
+     SVNParentPath "/var/svn"
 
-	 AuthType Basic
-	 AuthName redmine
-	 Require valid-user
+     AuthType Basic
+     AuthName redmine
+     Require valid-user
 
-	 PerlAccessHandler Apache::Authn::Redmine::access_handler
-	 PerlAuthenHandler Apache::Authn::Redmine::authen_handler
+     PerlAccessHandler Apache::Authn::Redmine::access_handler
+     PerlAuthenHandler Apache::Authn::Redmine::authen_handler
 
-	 ## for mysql
-	 PerlSetVar dsn DBI:mysql:database=databasename;host=my.db.server
-	 ## for postgres
-	 # PerlSetVar dsn DBI:Pg:dbname=databasename;host=my.db.server
+     ## for mysql
+     PerlSetVar dsn DBI:mysql:database=databasename;host=my.db.server
+     ## for postgres
+     # PerlSetVar dsn DBI:Pg:dbname=databasename;host=my.db.server
 
-	 PerlSetVar db_user redmine
-	 PerlSetVar db_pass password
+     PerlSetVar db_user redmine
+     PerlSetVar db_pass password
   </Location>
 
 To be able to browse repository inside redmine, you must add something
 like that :
 
    <Location /svn-private>
-	 DAV svn
-	 SVNParentPath "/var/svn"
-	 Order deny,allow
-	 Deny from all
-	 # only allow reading orders
-	 <Limit GET PROPFIND OPTIONS REPORT>
-	   Allow from redmine.server.ip
-	 </Limit>
+     DAV svn
+     SVNParentPath "/var/svn"
+     Order deny,allow
+     Deny from all
+     # only allow reading orders
+     <Limit GET PROPFIND OPTIONS REPORT>
+       Allow from redmine.server.ip
+     </Limit>
    </Location>
 
 and you will have to use this reposman.rb command line to create repository :
@@ -109,54 +109,54 @@ use Apache2::Const qw(:common);
 my %read_only_methods = map { $_ => 1 } qw/GET PROPFIND REPORT OPTIONS/;
 
 sub access_handler {
-  my $r = shift;
+    my $r = shift;
 
-  unless ($r->some_auth_required) {
-	  # $r->log_reason("No authentication has been configured");
-	  # return FORBIDDEN;
-	  return OK;
-  }
+    unless ($r->some_auth_required) {
+        # $r->log_reason("No authentication has been configured");
+        # return FORBIDDEN;
+        return OK;
+    }
 
-  # TODO implement is_valid_project_id, return FORBIDDEN or not found maybe CP 2012-02
-  # my $method = $r->method;
-  # return OK unless 1 == $read_only_methods{$method};
+    # TODO implement is_valid_project_id, return FORBIDDEN or not found maybe CP 2012-02
+    # my $method = $r->method;
+    # return OK unless 1 == $read_only_methods{$method};
 
-  # my $project_id = get_project_identifier($r);
+    # my $project_id = get_project_identifier($r);
 
-  #$r->set_handlers(PerlAuthenHandler => [\&OK])
-  #    if is_public_project($project_id, $r);
+    #$r->set_handlers(PerlAuthenHandler => [\&OK])
+    #    if is_public_project($project_id, $r);
 
-  return OK
+    return OK
 }
 
 sub authen_handler {
-  my $r = shift;
+    my $r = shift;
 
-  my ($res, $redmine_pass) =  $r->get_basic_auth_pw();
-  return $res unless $res == OK;
+    my ($res, $redmine_pass) =  $r->get_basic_auth_pw();
+    return $res unless $res == OK;
 
-  if (is_member($r->user, $redmine_pass, $r)) {
-	  return OK;
-  } else {
-	  $r->note_auth_failure();
-	  return AUTH_REQUIRED;
-  }
+    if (is_member($r->user, $redmine_pass, $r)) {
+        return OK;
+    } else {
+        $r->note_auth_failure();
+        return AUTH_REQUIRED;
+    }
 }
 
 sub is_public_project {
-	my $project_id = shift;
-	my $r = shift;
+    my $project_id = shift;
+    my $r = shift;
 
-	my $dbh = connect_database($r);
-	my $sth = $dbh->prepare(
-		"SELECT * FROM projects WHERE projects.identifier=? and projects.is_public=true;"
-	);
+    my $dbh = connect_database($r);
+    my $sth = $dbh->prepare(
+        "SELECT * FROM projects WHERE projects.identifier=? and projects.is_public=true;"
+    );
 
-	$sth->execute($project_id);
-	my $ret = $sth->fetchrow_array ? 1 : 0;
-	$dbh->disconnect();
+    $sth->execute($project_id);
+    my $ret = $sth->fetchrow_array ? 1 : 0;
+    $dbh->disconnect();
 
-	$ret;
+    $ret;
 }
 
 # perhaps we should use repository right (other read right) to check public access.
@@ -175,66 +175,79 @@ sub is_public_project {
 # }
 
 sub is_member {
-  my $redmine_user = shift;
-  my $redmine_pass = shift;
-  my $r = shift;
+    my $redmine_user = shift;
+    my $redmine_pass = shift;
+    my $r = shift;
+    my $dbh;
+    my $project_id = get_project_identifier($r);
 
-  my $dbh         = connect_database($r);
-  my $project_id  = get_project_identifier($r);
+    # check which database we expect this project in: public or private
+    if (-d "/var/vcs/public/$project_id") {
+        $dbh = connect_database($r);
+    } else {
+        $dbh = connect_database_pvt($r);
+    }
 
-  my $pass_digest = Digest::SHA1::sha1_hex($redmine_pass);
+    my $pass_digest = Digest::SHA1::sha1_hex($redmine_pass);
 
-  my $sth = $dbh->prepare(
-	  "SELECT hashed_password, auth_source_id FROM members, projects, users WHERE projects.id=members.project_id AND users.id=members.user_id AND users.status=1 AND login=? AND identifier=?;"
-  );
-  $sth->execute($redmine_user, $project_id);
+    my $sth = $dbh->prepare(
+        "SELECT hashed_password, auth_source_id FROM members, projects, users WHERE projects.id=members.project_id AND users.id=members.user_id AND users.status=1 AND login=? AND identifier=?;"
+    );
+    $sth->execute($redmine_user, $project_id);
 
-  my $ret;
-  while (my @row = $sth->fetchrow_array) {
-	  unless ($row[1]) {
-		  if ($row[0] eq $pass_digest) {
-			  $ret = 1;
-			  last;
-		  }
-	  } elsif ($CanUseLDAPAuth) {
-		  my $sthldap = $dbh->prepare(
-			  "SELECT host,port,tls,account,account_password,base_dn,attr_login from auth_sources WHERE id = ?;"
-		  );
-		  $sthldap->execute($row[1]);
-		  while (my @rowldap = $sthldap->fetchrow_array) {
-			my $ldap = Authen::Simple::LDAP->new(
-				host    =>      ($rowldap[2] == 1 || $rowldap[2] eq "t") ? "ldaps://$rowldap[0]" : $rowldap[0],
-				port    =>      $rowldap[1],
-				basedn  =>      $rowldap[5],
-				binddn  =>      $rowldap[3] ? $rowldap[3] : "",
-				bindpw  =>      $rowldap[4] ? $rowldap[4] : "",
-				filter  =>      "(".$rowldap[6]."=%s)"
-			);
-			$ret = 1 if ($ldap->authenticate($redmine_user, $redmine_pass));
-		  }
-		  $sthldap->finish();
-	  }
-  }
-  $sth->finish();
-  $dbh->disconnect();
+    my $ret;
+    while (my @row = $sth->fetchrow_array) {
+        unless ($row[1]) {
+            if ($row[0] eq $pass_digest) {
+                $ret = 1;
+                last;
+            }
+        } elsif ($CanUseLDAPAuth) {
+            my $sthldap = $dbh->prepare(
+                "SELECT host,port,tls,account,account_password,base_dn,attr_login from auth_sources WHERE id = ?;"
+            );
+            $sthldap->execute($row[1]);
+            while (my @rowldap = $sthldap->fetchrow_array) {
+                my $ldap = Authen::Simple::LDAP->new(
+                    host   => ($rowldap[2] == 1 || $rowldap[2] eq "t") ? "ldaps://$rowldap[0]" : $rowldap[0],
+                    port   => $rowldap[1],
+                    basedn => $rowldap[5],
+                    binddn => $rowldap[3] ? $rowldap[3] : "",
+                    bindpw => $rowldap[4] ? $rowldap[4] : "",
+                    filter => "(".$rowldap[6]."=%s)"
+                );
+                $ret = 1 if ($ldap->authenticate($redmine_user, $redmine_pass));
+            }
+            $sthldap->finish();
+        }
+    }
+    $sth->finish();
+    $dbh->disconnect();
 
-  $ret;
+    $ret;
 }
 
 sub get_project_identifier {
-	my $r = shift;
+    my $r = shift;
 
-	my $location = $r->location;
-	my ($identifier) = $r->args =~ m{repoId\=([^&]+)};
+    my $location = $r->location;
+    my ($identifier) = $r->args =~ m{repoId\=([^&]+)};
 
-	$identifier;
+    $identifier;
 }
 
 sub connect_database {
-	my $r = shift;
+    my $r = shift;
 
-	my ($dsn, $db_user, $db_pass) = map { $r->dir_config($_) } qw/dsn db_user db_pass/;
-	return DBI->connect($dsn, $db_user, $db_pass);
+    my ($dsn, $db_user, $db_pass) = map { $r->dir_config($_) } qw/dsn db_user db_pass/;
+    return DBI->connect($dsn, $db_user, $db_pass);
+}
+
+sub connect_database_pvt {
+    my $r = shift;
+
+    my ($dsn, $db_user, $db_pass) = map { $r->dir_config($_) } qw/dsnpvt db_user db_pass/;
+    return DBI->connect($dsn, $db_user, $db_pass);
 }
 
 1;
