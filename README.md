@@ -69,6 +69,8 @@ sudo a2ensite languagedepot_org_resumable.conf
 sudo service apache2 reload
 ```
 
+4. Update dependencies (see [below](#updating-dependencies))
+
 ## Testing ##
 
 ### PHP Unit Tests ###
