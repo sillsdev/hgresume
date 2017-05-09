@@ -5,13 +5,15 @@ use Lib\HgResumeResponse;
 use Lib\HgRunner;
 
 class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
+    /** @var HgRepoTestEnvironment */
+    private $testEnvironment;
 
-    var $testEnvironment;
-    var $api;
+    /** @var HgResumeApi */
+    private $api;
 
     function setUp() {
         $this->testEnvironment = new HgRepoTestEnvironment();
-        $this->api = new HgResumeAPI($this->testEnvironment->BasePath);
+        $this->api = new HgResumeApi($this->testEnvironment->BasePath);
     }
 
     function tearDown() {
@@ -338,7 +340,7 @@ class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
         $this->api->finishPullBundle($transId); // reset things on server
         $hashes = explode('|', trim(file_get_contents(TEST_PATH . "/data/sample2branch2tip.hash")));
 
-        $response = $this->api->getRevisions('sample2branchHgRepo', 0, 50);
+        $response = $this->api->getRevisions('sample2branchHgRepo', $offset, $chunkSize);
         $this->assertEquals(HgResumeResponse::SUCCESS, $response->Code);
         $revisions = explode('|', $response->Content);
         $branchArray = array();
@@ -351,13 +353,13 @@ class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
 
     function testPullBundleChunk_2BranchRepoNoChanges_ReturnsNoChange() {
         $offset = 0;
-        $chunkSize = 50;
+        $chunkSize = 500;
         $transId = __FUNCTION__;
         $this->testEnvironment->makeRepo(TEST_PATH . "/data/sample2branchHgRepo.zip");
         $this->api->finishPullBundle($transId); // reset things on server
         $hashes = explode('|', trim(file_get_contents(TEST_PATH . "/data/sample2branch2tip.hash")));
 
-        $response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, 0, 500, $transId, true);
+        $response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, $offset, $chunkSize, $transId, true);
         $this->assertEquals(HgResumeResponse::NOCHANGE, $response->Code);
     }
 
@@ -484,5 +486,3 @@ class TestOfHgResumeAPI extends PHPUnit_Framework_TestCase {
         $this->assertEquals(HgResumeResponse::FAIL, $response->Code);
     }
 }
-
-?>

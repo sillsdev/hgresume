@@ -3,14 +3,7 @@
 namespace Lib;
 
 class RestServer {
-    public $url;
-    public $args;
-    public $postData;
-    public $debug;
-
-    var $api;
-
-    function __construct($apiInstance, $debug = false) {
+    public function __construct($apiInstance, $debug = false) {
         $this->api = $apiInstance;
         $this->debug = $debug;
         $this->args = array();
@@ -18,7 +11,14 @@ class RestServer {
         $this->postData = "";
     }
 
-    function handle() {
+    public $url;
+    public $args;
+    public $postData;
+    public $debug;
+
+    private $api;
+
+    public function handle() {
 
         // get method name
         $urlparsed = parse_url($this->url);
@@ -40,8 +40,8 @@ class RestServer {
         RestServer::sendResponse($response, $this->debug);
     }
 
-    static function buildOrderedParamArray($method, $className, $args) {
-        $classReflection = new ReflectionClass($className);
+    private static function buildOrderedParamArray($method, $className, $args) {
+        $classReflection = new \ReflectionClass($className);
         $parameters = $classReflection->getMethod($method)->getParameters();
         $argsToReturn = array();
 
@@ -59,13 +59,13 @@ class RestServer {
         return $argsToReturn;
     }
 
-    static function serverError($msg) {
+    private static function serverError($msg) {
         $response = new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => $msg), $msg);
         RestServer::sendResponse($response, false);
         exit();
     }
 
-    static function sendResponse($response, $debug) {
+    private static function sendResponse($response, $debug) {
         list($httpCode, $hgrStatus) = RestServer::mapHgResponse($response->Code);
 
         $headers = array();
@@ -104,56 +104,50 @@ class RestServer {
         }
     }
 
-
-    static function mapHgResponse($hgrCode) {
-        $httpcode = 0;
-        $codeString = '';
+    private static function mapHgResponse($hgrCode) {
         // map resume responsecode to http status code
         switch ($hgrCode) {
             case HgResumeResponse::SUCCESS:
-                $httpcode = "200 OK";
+                $httpCode = "200 OK";
                 $codeString = 'SUCCESS';
                 break;
             case HgResumeResponse::RECEIVED:
-                $httpcode = "202 Accepted";
+                $httpCode = "202 Accepted";
                 $codeString = 'RECEIVED';
                 break;
             case HgResumeResponse::RESET:
-                $httpcode = "400 Bad Request";
+                $httpCode = "400 Bad Request";
                 $codeString = 'RESET';
                 break;
             case HgResumeResponse::UNAUTHORIZED:
-                $httpcode = "401 Unauthorized";
+                $httpCode = "401 Unauthorized";
                 $codeString = 'UNAUTHORIZED';
                 break;
             case HgResumeResponse::FAIL:
-                $httpcode = "400 Bad Request";
+                $httpCode = "400 Bad Request";
                 $codeString = 'FAIL';
                 break;
             case HgResumeResponse::UNKNOWNID:
-                $httpcode = "400 Bad Request";
+                $httpCode = "400 Bad Request";
                 $codeString = 'UNKNOWNID';
                 break;
             case HgResumeResponse::NOCHANGE:
-                $httpcode = "304 Not Modified";
+                $httpCode = "304 Not Modified";
                 $codeString = 'NOCHANGE';
                 break;
             case HgResumeResponse::NOTAVAILABLE:
-                $httpcode = "503 Service Unavailable";
+                $httpCode = "503 Service Unavailable";
                 $codeString = 'NOTAVAILABLE';
                 break;
             case HgResumeResponse::INPROGRESS:
-                $httpcode = "202 Accepted";
+                $httpCode = "202 Accepted";
                 $codeString = 'INPROGRESS';
                 break;
             default:
-                throw new Exception("Unknown response code {$response->Code}");
+                throw new \Exception("Unknown response code $hgrCode");
                 break;
         }
-        return array($httpcode, $codeString);
+        return array($httpCode, $codeString);
     }
 
-
 }
-
-?>

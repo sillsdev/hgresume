@@ -5,31 +5,29 @@ namespace Lib;
 use Lib\Exception\UnrelatedRepoException;
 use Lib\Exception\ValidationException;
 
-class HgResumeAPI {
-    var $RepoBasePaths;
-
-    // Note: API_VERSION is defined in config.php
-
-    function __construct($searchPaths) {
+class HgResumeApi {
+    public function __construct($searchPaths) {
         // $searchPaths is an array of paths
         if (is_array($searchPaths)) {
             $this->RepoBasePaths = $searchPaths;
-        }
-        else {
+        } else {
             $this->RepoBasePaths = array($searchPaths);
         }
     }
+
+    /** @var string[] */
+    private $RepoBasePaths;
 
     /**
      * Pushes a chunk of binary $data at $offset in the stream for $transId in $repoId
      * @param string $repoId
      * @param int $bundleSize
      * @param int $offset
-     * @param byte[] $data
+     * @param string $data
      * @param string $transId
      * @return HgResumeResponse
      */
-    function pushBundleChunk($repoId, $bundleSize, $offset, $data, $transId) {
+    public function pushBundleChunk($repoId, $bundleSize, $offset, $data, $transId) {
         $availability = $this->isAvailable();
         if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
             return $availability;
@@ -68,6 +66,7 @@ class HgResumeAPI {
 
         $bundle = new BundleHelper($transId);
         switch ($bundle->getState()) {
+            /** @noinspection PhpMissingBreakStatementInspection */
             case BundleHelper::State_Start:
                 $bundle->setState(BundleHelper::State_Uploading);
                 // Fall through to State_Uploading
@@ -153,10 +152,10 @@ class HgResumeAPI {
                 }
                 break;
         }
+        return null;
     }
 
     /**
-     *
      * Requests to pull a chunk of $chunkSize bytes at $offset in the bundle from $repoId using the
      * $transId to identify this transaction.
      * @param string $repoId
@@ -166,14 +165,14 @@ class HgResumeAPI {
      * @param string $transId
      * @return HgResumeResponse
      */
-    function pullBundleChunk($repoId, $baseHashes, $offset, $chunkSize, $transId) {
+    public function pullBundleChunk($repoId, $baseHashes, $offset, $chunkSize, $transId) {
         return $this->pullBundleChunkInternal($repoId, $baseHashes, $offset, $chunkSize, $transId, false);
     }
 
     /**
-     *
+     * FixMe: This function is only public to allow testing
      * @param string $repoId
-     * @param array[string] $baseHashes expects just hashes, NOT hashes with a branch name appended
+     * @param string[]|string $baseHashes expects just hashes, NOT hashes with a branch name appended
      * @param int $offset
      * @param int $chunkSize
      * @param string $transId
@@ -181,7 +180,7 @@ class HgResumeAPI {
      * @throws \Exception
      * @return HgResumeResponse
      */
-    function pullBundleChunkInternal($repoId, $baseHashes, $offset, $chunkSize, $transId, $waitForBundleToFinish) {
+    public function pullBundleChunkInternal($repoId, $baseHashes, $offset, $chunkSize, $transId, $waitForBundleToFinish) {
         try {
             if (!is_array($baseHashes)) {
                 $baseHashes = array($baseHashes);
@@ -234,10 +233,7 @@ class HgResumeAPI {
             }
 
             $bundle = new BundleHelper($transId);
-
-            $bundleCreatedInThisExecution = false;
             $bundleFilename = $bundle->getBundleFileName();
-
             $asyncRunner = new AsyncRunner($bundleFilename);
             if (!$bundle->exists()) {
                 // if the client requests an offset greater than 0, but the bundle needed to be created on this request,
@@ -322,8 +318,7 @@ class HgResumeAPI {
         return $data;
     }
 
-
-    function getRevisions($repoId, $offset, $quantity) {
+    public function getRevisions($repoId, $offset, $quantity) {
         $availability = $this->isAvailable();
         if ($availability->Code == HgResumeResponse::NOTAVAILABLE) {
             return $availability;
@@ -334,8 +329,7 @@ class HgResumeAPI {
                 $hg = new HgRunner($repoPath);
                 $revisionList = $hg->getRevisions($offset, $quantity);
                 $hgresponse = new HgResumeResponse(HgResumeResponse::SUCCESS, array(), implode("|",$revisionList));
-            }
-            else {
+            } else {
                 $hgresponse = new HgResumeResponse(HgResumeResponse::UNKNOWNID);
             }
         } catch (\Exception $e) {
@@ -345,7 +339,7 @@ class HgResumeAPI {
         return $hgresponse;
     }
 
-    function finishPushBundle($transId) {
+    public function finishPushBundle($transId) {
         $bundle = new BundleHelper($transId);
         if ($bundle->cleanUp()) {
             return new HgResumeResponse(HgResumeResponse::SUCCESS);
@@ -354,7 +348,7 @@ class HgResumeAPI {
         }
     }
 
-    function finishPullBundle($transId) {
+    public function finishPullBundle($transId) {
         $bundle = new BundleHelper($transId);
         if ($bundle->hasProp("tip") and $bundle->hasProp("repoId")) {
             $repoPath = $this->getRepoPath($bundle->getProp("repoId"));
@@ -373,7 +367,7 @@ class HgResumeAPI {
         return new HgResumeResponse(HgResumeResponse::FAIL);
     }
 
-    function isAvailable() {
+    public function isAvailable() {
         if ($this->isAvailableAsBool()) {
             return new HgResumeResponse(HgResumeResponse::SUCCESS);
         }
@@ -405,5 +399,3 @@ class HgResumeAPI {
         return "";
     }
 }
-
-?>

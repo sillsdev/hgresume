@@ -7,36 +7,29 @@ use Lib\Exception\UnrelatedRepoException;
 use Lib\Exception\ValidationException;
 
 class HgRunner {
-    /**
-     *
-     * @var string
-     */
-    public $repoPath;
+    const DEFAULT_HG = '/var/vcs/public';
 
     /**
-     *
-     * @var bool
-     */
-    public $logState;
-
-    const DEFAULT_HG = "/var/vcs/public";
-
-    /**
-     *
      * @param string $repoPath
      * @throws ValidationException
      */
-    function __construct($repoPath = self::DEFAULT_HG) {
+    public function __construct($repoPath = self::DEFAULT_HG) {
         if (is_dir($repoPath)) {
             $this->repoPath = $repoPath;
         } else {
             throw new ValidationException("repo '$repoPath' doesn't exist!");
         }
-        $logState = false;
+        $this->logState = false;
     }
 
+    /** @var string */
+    public $repoPath;
+
+    /** @var bool */
+    public $logState;
+
     private function logEvent($message) {
-        $logFilename = $this->repoPath . "/hgRunner.log";
+        $logFilename = $this->repoPath . '/hgRunner.log';
         $timestamp = date("YMd \TH.i");
         if (!$this->logState) {
             $this->logState = true;
@@ -52,7 +45,7 @@ class HgRunner {
      * @throws \Exception
      * @return AsyncRunner
      */
-    function unbundle($filepath) {
+    public function unbundle($filepath) {
         if (!is_file($filepath)) {
             throw new HgException("bundle file '$filepath' is not a file!");
         }
@@ -61,7 +54,7 @@ class HgRunner {
         // run hg incoming to make sure this bundle is related to the repo
         $cmd = "hg incoming $filepath";
         $this->logEvent("cmd: $cmd");
-        $asyncRunner = new AsyncRunner($filepath . ".incoming");
+        $asyncRunner = new AsyncRunner($filepath . '.incoming');
         $asyncRunner->run($cmd);
         $asyncRunner->synchronize();
         $output = $asyncRunner->getOutput();
@@ -83,15 +76,13 @@ class HgRunner {
     }
 
     function assertIsRelatedRepo($bundleFilePath) {
-
     }
 
     /**
-     *
      * @param string $revision
      * @return AsyncRunner
      */
-    function update($revision = "") {
+    public function update($revision = '') {
         chdir($this->repoPath);
         $cmd = "hg update $revision";
         $this->logEvent("cmd: $cmd");
@@ -101,16 +92,16 @@ class HgRunner {
     }
 
     /**
-     * @param string $baseHashes[] expects the data to be just the "hash" and NOT the branch information preceded by a colon
+     * @param string[] $baseHashes expects the data to be just the "hash" and NOT the branch information preceded by a colon
      * @param string $bundleFilePath
      * @return AsyncRunner
      */
-    function makeBundle($baseHashes, $bundleFilePath) {
+    public function makeBundle($baseHashes, $bundleFilePath) {
         chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
-        if (count($baseHashes) == 1 && $baseHashes[0] == "0") {
+        if (count($baseHashes) == 1 && $baseHashes[0] == '0') {
             $cmd = "hg bundle --all $bundleFilePath";
         } else {
-            $cmd = "hg bundle ";
+            $cmd = 'hg bundle ';
             $baseHashes = (array)$baseHashes; //I can't figure out why this is sometimes not an array
             foreach($baseHashes as $hash)
             {
@@ -125,11 +116,11 @@ class HgRunner {
 
     /**
      * helper function, mostly for tests
-     * @param string $baseHashes[]
+     * @param string[] $baseHashes
      * @param string $bundleFilePath
      * @return AsyncRunner
      */
-    function makeBundleAndWaitUntilFinished($baseHashes, $bundleFilePath) {
+    public function makeBundleAndWaitUntilFinished($baseHashes, $bundleFilePath) {
         $asyncRunner = $this->makeBundle($baseHashes, $bundleFilePath);
         $asyncRunner->synchronize();
         return $asyncRunner;
@@ -138,13 +129,12 @@ class HgRunner {
     /**
      * @return string a baseHash (without branch information)
      */
-
-    function getTip() {
+    public function getTip() {
         $revisionArray = $this->getRevisions(0, 1);
         return substr($revisionArray[0], 0, strpos($revisionArray[0], ':'));
     }
 
-    function getBranchTips() {
+    public function getBranchTips() {
         chdir($this->repoPath);
         exec('hg branches', $output, $returnval);
         $revisionArray = array();
@@ -165,12 +155,12 @@ class HgRunner {
     }
 
     //this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
-    function getRevisions($offset, $quantity) {
+    public function getRevisions($offset, $quantity) {
         return $this->getRevisionsInternal($offset, $quantity, NULL);
     }
 
     //this method will return an array containing revision hash branch pairs e.g. 'fb7a8f23394d:default'
-    function getRevisionsInternal($offset, $quantity, $branch) {
+    private function getRevisionsInternal($offset, $quantity, $branch) {
         if ($quantity < 1) {
             throw new ValidationException("quantity parameter must be larger than 0");
         }
@@ -195,7 +185,7 @@ class HgRunner {
         return array_slice($output, $offset, $quantity);
     }
 
-    function isValidBase($hashes) {
+    public function isValidBase($hashes) {
         if (!is_array($hashes)) {
             $hashes = array($hashes);
         }
@@ -225,7 +215,7 @@ class HgRunner {
     }
 
     // helper function used in tests
-    function addAndCheckInFile($filePath) {
+    public function addAndCheckInFile($filePath) {
         chdir($this->repoPath);
         $cmd = "hg add $filePath";
         exec(escapeshellcmd($cmd) . " 2> /dev/null", $output, $returnval);
@@ -239,5 +229,3 @@ class HgRunner {
         }
     }
 }
-
-?>

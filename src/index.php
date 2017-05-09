@@ -1,13 +1,13 @@
 <?php
 
-use Lib\HgResumeAPI;
+use Lib\HgResumeApi;
 use Lib\RestServer;
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/config.php';
 
 //$repoPath = sys_get_temp_dir() . "/hgresume_repoTestEnvironment";
-$api = new HgResumeAPI($repoSearchPaths);
+$api = new HgResumeApi($repoSearchPaths);
 
 // second param is debug mode
 $restServer = new RestServer($api, false);

@@ -69,13 +69,6 @@ sudo a2ensite languagedepot_org_resumable.conf
 sudo service apache2 reload
 ```
 
-4. To add a **VCS** Mecurial repository with `<Identifier>` for testing
-```
-cd /var/vcs/public
-sudo hg clone http://hg-public.qa.languagedepot.org/<Identifier>
-sudo chown www-data:www-data -R /var/vcs/public
-```
-
 ## Testing ##
 
 ### PHP Unit Tests ###
