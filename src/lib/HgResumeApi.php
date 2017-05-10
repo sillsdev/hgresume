@@ -44,16 +44,15 @@ class HgResumeApi {
         $hg = new HgRunner($repoPath);
 
         // $offset
-        if ($offset < 0 or $offset >= $bundleSize) {
+        if ($offset < 0 or $offset > $bundleSize) {
             return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid offset'));
         }
         // $data
         $dataSize = mb_strlen($data, "8bit");
-        if ($dataSize == 0) {
-            return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data sent'));
-        }
         if ($dataSize > $bundleSize - $offset) {
             return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'data sent is larger than remaining bundle size'));
+        } else if ($dataSize == 0 && $offset != $bundleSize) {
+            return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data sent'));
         }
         // $bundleSize
         if (intval($bundleSize) < 0) {
@@ -82,10 +81,12 @@ class HgResumeApi {
                     }
                 }
                 // write chunk data to bundle file
-                $bundleFile = fopen($bundle->getBundleFileName(), "a");
-                fseek($bundleFile, $offset);
-                fwrite($bundleFile, $data);
-                fclose($bundleFile);
+                if ($dataSize > 0) {
+                    $bundleFile = fopen($bundle->getBundleFileName(), "a");
+                    fseek($bundleFile, $offset);
+                    fwrite($bundleFile, $data);
+                    fclose($bundleFile);
+                }
 
                 $newSow = $offset + $dataSize;
                 $bundle->setOffset($newSow);
@@ -109,7 +110,9 @@ class HgResumeApi {
                             }
                             sleep(1);
                         }
-                        $responseValues = array('transId' => $transId, 'sow' => $newSow);
+                        // Since the client is incorrectly determining when it is finished, tell the client that the
+                        // server has received one less byte than it did until the server has finished.
+                        $responseValues = array('transId' => $transId, 'sow' => $newSow - 1);
                         // If the unbundle operation has not completed within 4 seconds (unlikely for a large repo) then we punt back to the client with a RECEIVED.
                         //The client can then initiate another request, and hopefully the unbundle will have finished by then
                         // FUTURE: we should return an INPROGRESS status and have the client display a message accordingly. - cjh 2014-07
@@ -147,7 +150,9 @@ class HgResumeApi {
                     $responseValues = array('transId' => $transId);
                     return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
                 } else {
-                    $responseValues = array('transId' => $transId, 'sow' => $bundle->getOffset());
+                    // Since the client is incorrectly determining when it is finished, tell the client that the
+                    // server has received one less byte than it did until the server has finished.
+                    $responseValues = array('transId' => $transId, 'sow' => $bundle->getOffset() - 1);
                     return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
                 }
                 break;
