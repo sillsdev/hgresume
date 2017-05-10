@@ -156,7 +156,7 @@ gulp.task('build-upload', function (cb) {
 
   // api/[branch name]
   options.src = 'src/';
-  options.dest = path.join(params.dest, 'api', params.branch) + '/';
+  options.dest = path.join(params.dest, 'api', params.branch);
   execute(
     'rsync -progzlt --chmod=Dug=rwx,Fug=rw,o-rwx ' +
     '--delete-during --stats --rsync-path="sudo rsync" <%= rsh %> ' +
