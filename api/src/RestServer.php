@@ -147,7 +147,7 @@ class RestServer {
 				$codeString = 'INPROGRESS';
 				break;
 			default:
-				throw new Exception("Unknown response code {$response->Code}");
+				throw new Exception("Unknown response code $hgrCode");
 				break;
 		}
 		return array($httpcode, $codeString);
