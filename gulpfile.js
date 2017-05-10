@@ -143,16 +143,12 @@ gulp.task('build-upload', function (cb) {
     dest: params.dest
   };
 
-  if (!options.dest.endsWith('/')) {
-    options.dest += '/';
-  }
-
   // Redmine Resumable.
   // Leave api/ directory intact!
   execute(
     'rsync -progzlt --chmod=Dug=rwx,Fug=rw,o-rwx ' +
     '--delete-during --stats --rsync-path="sudo rsync" <%= rsh %> ' +
-    '--exclude api ' +
+    '--exclude=api ' +
     '<%= src %> <%= dest %>',
     options,
     cb
