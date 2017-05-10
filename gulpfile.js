@@ -98,18 +98,18 @@ gulp.task('build-composer', function (cb) {
 });
 
 // -------------------------------------
-//   Task: Change Group to www-data
+//   Task: Change Ownership
 // -------------------------------------
-gulp.task('build-changeGroup', function (cb) {
+gulp.task('build-chown', function (cb) {
   execute(
-    'sudo chgrp -R www-data src',
+    'sudo chown -R root:www-data contrib src',
     null,
     cb
   );
 });
 
-gulp.task('build-changeGroup').description =
-  'Ensure www-data is the group';
+gulp.task('build-chown').description =
+  'Change ownership before rsync';
 
 // -------------------------------------
 //   Task: Build (General)
@@ -117,7 +117,7 @@ gulp.task('build-changeGroup').description =
 gulp.task('build',
   gulp.series(
     'build-composer',
-    'build-changeGroup')
+    'build-chown')
 );
 
 // -------------------------------------
