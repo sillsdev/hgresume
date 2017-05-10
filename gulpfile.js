@@ -79,4 +79,107 @@ gulp.task('test-php-run').description = 'run hgresume Unit tests';
 
 // endregion test
 
+// region build
+
+// -------------------------------------
+//   Task: Build Composer for production
+// -------------------------------------
+gulp.task('build-composer', function (cb) {
+  var options = {
+    dryRun: false,
+    silent: false,
+    cwd: './src'
+  };
+  execute(
+    'composer install --no-dev',
+    options,
+    cb
+  );
+});
+
+// -------------------------------------
+//   Task: Change Group to www-data
+// -------------------------------------
+gulp.task('build-changeGroup', function (cb) {
+  execute(
+    'sudo chgrp -R www-data src',
+    null,
+    cb
+  );
+});
+
+gulp.task('build-changeGroup').description =
+  'Ensure www-data is the group';
+
+// -------------------------------------
+//   Task: Build (General)
+// -------------------------------------
+gulp.task('build',
+  gulp.series(
+    'build-composer',
+    'build-changeGroup')
+);
+
+// -------------------------------------
+//   Task: Build Upload to destination
+// -------------------------------------
+gulp.task('build-upload', function (cb) {
+  var params = require('yargs')
+    .option('dest', {
+      demand: true,
+      type: 'string' })
+    .option('uploadCredentials', {
+      demand: true,
+      type: 'string' })
+    .option('branch', {
+      demand: true,
+      type: 'string' })
+    .argv;
+  var options = {
+    dryRun: false,
+    silent: false,
+    rsh: '--rsh="ssh -v -i ' + params.uploadCredentials + '"',
+    src: 'contrib/',
+    dest: params.dest
+  };
+
+  if (!options.dest.endsWith('/')) {
+    options.dest += '/';
+  }
+
+  // Redmine Resumable.
+  // Leave api/ directory intact!
+  execute(
+    'rsync -progzlt --chmod=Dug=rwx,Fug=rw,o-rwx ' +
+    '--delete-during --stats --rsync-path="sudo rsync" <%= rsh %> ' +
+    '--exclude api ' +
+    '<%= src %> <%= dest %>',
+    options,
+    cb
+  );
+
+  // api/[branch name]
+  options.src = 'src/';
+  options.dest = path.join(params.dest, 'api', params.branch) + '/';
+  execute(
+    'rsync -progzlt --chmod=Dug=rwx,Fug=rw,o-rwx ' +
+    '--delete-during --stats --rsync-path="sudo rsync" <%= rsh %> ' +
+    '<%= src %> <%= dest %>',
+    options,
+    cb
+  );
+});
+
+// -------------------------------------
+//   Task: Build and Upload to destination
+// -------------------------------------
+gulp.task('build-and-upload',
+  gulp.series(
+    'build',
+    'build-upload'
+  )
+);
+
+// endregion build
+
 gulp.task('default', gulp.series('test-php-run'));
