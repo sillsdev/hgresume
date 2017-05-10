@@ -44,16 +44,15 @@ class HgResumeApi {
         $hg = new HgRunner($repoPath);
 
         // $offset
-        if ($offset < 0 or $offset >= $bundleSize) {
+        if ($offset < 0 or $offset > $bundleSize) {
             return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'invalid offset'));
         }
         // $data
         $dataSize = mb_strlen($data, "8bit");
-        if ($dataSize == 0) {
-            return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data sent'));
-        }
         if ($dataSize > $bundleSize - $offset) {
             return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'data sent is larger than remaining bundle size'));
+        } else if ($dataSize == 0 && $offset != $bundleSize) {
+            return new HgResumeResponse(HgResumeResponse::FAIL, array('Error' => 'no data sent'));
         }
         // $bundleSize
         if (intval($bundleSize) < 0) {
@@ -99,19 +98,24 @@ class HgResumeApi {
                         for ($i = 0; $i < 4; $i++) {
                             if ($asyncRunner->isComplete()) {
                                 if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
+                                    // TODO: Log the errors in a more useful way that results in alarm bells on Trello.
                                     $responseValues = array('transId' => $transId);
                                     return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
                                 }
                                 $bundle->cleanUp();
                                 $asyncRunner->cleanUp();
-                                $responseValues = array('transId' => $transId);
+                                $responseValues = array('transId' => $transId, 'sow' => $newSow);
                                 return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
                             }
                             sleep(1);
                         }
-                        $responseValues = array('transId' => $transId, 'sow' => $newSow);
+                        // Since the client is incorrectly determining when it is finished by using sow == bundleSize,
+                        // tell the client that the server has received one less byte than it did until the server can
+                        // confirm that the unbundle is complete. CP 2017-05
+                        // Would be nice to log "Server Slow" here.  This should be unusual CP 2017-05
+                        $responseValues = array('transId' => $transId, 'sow' => $newSow - 1);
                         // If the unbundle operation has not completed within 4 seconds (unlikely for a large repo) then we punt back to the client with a RECEIVED.
-                        //The client can then initiate another request, and hopefully the unbundle will have finished by then
+                        // The client can then initiate another request, and hopefully the unbundle will have finished by then
                         // FUTURE: we should return an INPROGRESS status and have the client display a message accordingly. - cjh 2014-07
                         return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
                     } catch (UnrelatedRepoException $e) {
@@ -136,21 +140,26 @@ class HgResumeApi {
             case BundleHelper::State_Unbundle:
                 $bundleFilePath = $bundle->getBundleFileName();
                 $asyncRunner = new AsyncRunner($bundleFilePath);
-                if ($asyncRunner->isComplete()) {
-                    if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
-                        $responseValues = array('transId' => $transId);
-                        // REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03
-                        return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
+                for ($i = 0; $i < 4; $i++) {
+                    if ($asyncRunner->isComplete()) {
+                        if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
+                            // TODO: Log the errors in a more useful way that results in alarm bells on Trello.
+                            $responseValues = array('transId' => $transId);
+                            return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
+                        }
+                        $bundle->cleanUp();
+                        $asyncRunner->cleanUp();
+                        $responseValues = array('transId' => $transId, 'sow' => $bundleSize);
+                        return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
                     }
-                    $bundle->cleanUp();
-                    $asyncRunner->cleanUp();
-                    $responseValues = array('transId' => $transId);
-                    return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
-                } else {
-                    $responseValues = array('transId' => $transId, 'sow' => $bundle->getOffset());
-                    return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
+                    sleep(1);
                 }
-                break;
+                // Since the client is incorrectly determining when it is finished by using sow == bundleSize,
+                // tell the client that the server has received one less byte than it did until the server can
+                // confirm that the unbundle is complete. CP 2017-05
+                // Would be nice to log "Server Slow" here.  This should be unusual CP 2017-05
+                $responseValues = array('transId' => $transId, 'sow' => $bundle->getOffset() - 1);
+                return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
         }
         return null;
     }
@@ -340,12 +349,10 @@ class HgResumeApi {
     }
 
     public function finishPushBundle($transId) {
-        $bundle = new BundleHelper($transId);
-        if ($bundle->cleanUp()) {
-            return new HgResumeResponse(HgResumeResponse::SUCCESS);
-        } else {
-            return new HgResumeResponse(HgResumeResponse::FAIL);
-        }
+        // This is unnecessary and deprecated. We now force the client to remain in the pushBundleChunk loop until
+        // the async unbundle command is completed.  Once complete, the bundle is cleaned up in the pushBundleChunk
+        // API. CP 2017-05
+        return new HgResumeResponse(HgResumeResponse::SUCCESS);
     }
 
     public function finishPullBundle($transId) {
