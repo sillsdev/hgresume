@@ -55,7 +55,9 @@ class HgRunner {
         $cmd = "hg incoming $filepath";
         $this->logEvent("cmd: $cmd");
         $asyncRunner = new AsyncRunner($filepath . '.incoming');
-        $asyncRunner->run($cmd);
+        if (!$asyncRunner->isRunning()) {
+            $asyncRunner->run($cmd);
+        }
         $asyncRunner->synchronize();
         $output = $asyncRunner->getOutput();
         if (preg_match('/abort:.*unknown parent/', $output)) {
