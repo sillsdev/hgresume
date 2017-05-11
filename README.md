@@ -39,6 +39,8 @@ Require valid-user
 sudo apt-get install mercurial
 ```
 
+  * The built-in Mercurial may be too new (v3.4+) to work with Chorus so instead use the Chorus [Mercurial-x86_64.zip](https://github.com/sillsdev/chorus/blob/master/lib/common/Mercurial-x86_64.zip).
+
 ## Maintenance Mode ##
 If there is ever a reason to shutdown the API temporarily, an admin or a server process can place a text file named maintenance_message.txt in the src directory with an appropriate explanation of why the API has been suspended.  All clients connecting to the API will receive the maintenance message.
 
