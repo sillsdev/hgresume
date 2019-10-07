@@ -109,6 +109,7 @@ class HgRunner {
             }
             $cmd .= $bundleFilePath;
         }
+        $cmd .= " -t v1";
         $asyncRunner = new AsyncRunner($bundleFilePath);
         $asyncRunner->run($cmd);
         return $asyncRunner;
