@@ -191,14 +191,15 @@ sub is_member {
     my $pass_digest = Digest::SHA1::sha1_hex($redmine_pass);
 
     my $sth = $dbh->prepare(
-        "SELECT hashed_password, auth_source_id FROM members, projects, users WHERE projects.id=members.project_id AND users.id=members.user_id AND users.status=1 AND login=? AND identifier=?;"
+        "SELECT hashed_password, auth_source_id, salt FROM members, projects, users WHERE projects.id=members.project_id AND users.id=members.user_id AND users.status=1 AND login=? AND identifier=?;"
     );
     $sth->execute($redmine_user, $project_id);
 
     my $ret;
     while (my @row = $sth->fetchrow_array) {
         unless ($row[1]) {
-            if ($row[0] eq $pass_digest) {
+            my $digest = $row[2] ? Digest::SHA::sha1_hex($row[2].$pass_digest) : $pass_digest;
+            if ($row[0] eq $digest) {
                 $ret = 1;
                 last;
             }

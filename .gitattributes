@@ -5,6 +5,11 @@
 *.h     diff=cpp
 *.idh   diff=cpp
 
+# Perl and Javascript files use space indentation
+*.pm whitespace=space-before-tab,tab-in-indent,blank-at-eol,tabwidth=4
+*.js whitespace=space-before-tab,tab-in-indent,blank-at-eol,tabwidth=2
+package.json whitespace=space-before-tab,tab-in-indent,blank-at-eol,tabwidth=4
+
 # Don't check whitespace for generated files
 *.csproj -whitespace
 *.resx -whitespace
