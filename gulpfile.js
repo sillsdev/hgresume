@@ -98,26 +98,12 @@ gulp.task('build-composer', function (cb) {
 });
 
 // -------------------------------------
-//   Task: Change Ownership
-// -------------------------------------
-gulp.task('build-chown', function (cb) {
-  execute(
-    'sudo chown -R root:www-data contrib src',
-    null,
-    cb
-  );
-});
-
-gulp.task('build-chown').description =
-  'Change ownership before rsync';
-
-// -------------------------------------
 //   Task: Build (General)
 // -------------------------------------
 gulp.task('build',
   gulp.series(
     'build-composer',
-    'build-chown')
+    )
 );
 
 // -------------------------------------
@@ -128,9 +114,6 @@ gulp.task('build-upload', function (cb) {
     .option('dest', {
       demand: true,
       type: 'string' })
-    .option('uploadCredentials', {
-      demand: true,
-      type: 'string' })
     .option('branch', {
       demand: true,
       type: 'string' })
@@ -138,16 +121,16 @@ gulp.task('build-upload', function (cb) {
   var options = {
     dryRun: false,
     silent: false,
-    rsh: '--rsh="ssh -v -i ' + params.uploadCredentials + '"',
+    rsh: '--rsh="ssh -v"',
     src: 'contrib/',
     dest: params.dest
   };
 
   // Redmine Resumable.
-  // Leave api/ directory intact!
+  // Do not use --delete-during since destination (htdocs) has multiple files we need to keep
   execute(
-    'rsync -progzlt --chmod=Dug=rwx,Fug=rw,o-rwx ' +
-    '--delete-during --stats --rsync-path="sudo rsync" <%= rsh %> ' +
+    'rsync -rzl --chmod=Dug=rwx,Fug=rw,Do=rx,Fo=r ' +
+    '--stats <%= rsh %> ' +
     '--exclude=api ' +
     '<%= src %> <%= dest %>',
     options,
@@ -158,8 +141,8 @@ gulp.task('build-upload', function (cb) {
   options.src = 'src/';
   options.dest = path.join(params.dest, 'api', params.branch);
   execute(
-    'rsync -progzlt --chmod=Dug=rwx,Fug=rw,o-rwx ' +
-    '--delete-during --stats --rsync-path="sudo rsync" <%= rsh %> ' +
+    'rsync -rzl --chmod=Dug=rwx,Fug=rw,Do=rx,Fo=r ' +
+    '--delete-during --stats <%= rsh %> ' +
     '<%= src %> <%= dest %>',
     options,
     cb
