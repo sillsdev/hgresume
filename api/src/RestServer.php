@@ -88,6 +88,7 @@ class RestServer {
 
 		if (!$debug) {
 			// regular mode
+			header("Content-Type: application/octet-stream");
 			foreach ($headers as $header) {
 				header($header);
 			}
