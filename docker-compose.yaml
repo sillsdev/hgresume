@@ -1,0 +1,9 @@
+services:
+  hgresumable:
+    container_name: hgresumable
+    build: .
+    ports:
+      - 8034:80
+    volumes:
+#      use LexBox repo path, adjust as needed for testing.
+      - ./../LexBox/hg-web/repos:/var/vcs/public
