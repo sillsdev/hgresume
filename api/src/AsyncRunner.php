@@ -64,17 +64,17 @@ class AsyncRunner
 	}
 
 	/**
-	 * 
-	 * @throws AsyncRunnerException
+	 * Waits for up to 5s for the runner to complete
+	 * @return boolean	True if complete, otherwise not complete yet
 	 */
 	public function synchronize() {
-		for ($i = 0; $i < 200; $i++) {
+		for ($i = 0; $i < 5; $i++) {
 			if ($this->isComplete()) {
-				return;
+				return true;
 			}
-			usleep(500000);
+			usleep(1000000);
 		}
-		throw new AsyncRunnerException("Error: Long running process exceeded 100 seconds while waiting to synchronize");
+		return false;
 	}
 }
 
