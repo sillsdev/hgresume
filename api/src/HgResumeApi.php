@@ -92,65 +92,76 @@ class HgResumeAPI {
 
 				// for the final chunk; assemble the bundle and apply the bundle
 				if ($newSow == $bundleSize) {
-					$bundle->setState(BundleHelper::State_Unbundle);
-					try {  // REVIEW Would be nice if the try / catch logic was universal. ie one policy for the api function. CP 2012-06
-						$bundleFilePath = $bundle->getBundleFileName();
-						$asyncRunner = $hg->unbundle($bundleFilePath);
-						for ($i = 0; $i < 4; $i++) {
-							if ($asyncRunner->isComplete()) {
-								if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
-									$responseValues = array('transId' => $transId);
-									return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
-								}
-								$bundle->cleanUp();
-								$asyncRunner->cleanUp();
-								$responseValues = array('transId' => $transId);
-								return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
-							}
-							sleep(1);
-						}
-						$responseValues = array('transId' => $transId, 'sow' => $newSow);
-						// If the unbundle operation has not completed within 4 seconds (unlikely for a large repo) then we punt back to the client with a RECEIVED.
-						//The client can then initiate another request, and hopefully the unbundle will have finished by then
-						// FUTURE: we should return an INPROGRESS status and have the client display a message accordingly. - cjh 2014-07
-						return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
-					} catch (UnrelatedRepoException $e) {
-						$bundle->setOffset(0);
-						$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
-						$responseValues['transId'] = $transId;
-						return new HgResumeResponse(HgResumeResponse::FAIL, $responseValues);
-					} catch (Exception $e) {
-						// REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03
-						//echo $e->getMessage(); // FIXME
-						$bundle->setOffset(0);
-						$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
-						$responseValues['transId'] = $transId;
-						return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
-					}
+					return $this->completePushBundle($bundle, $hg, $transId);
 				} else {
 					// received the chunk, but it's not the last one; we expect more chunks
 					$responseValues = array('transId' => $transId, 'sow' => $newSow);
 					return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
 				}
 				break;
-			case BundleHelper::State_Unbundle:
-				$bundleFilePath = $bundle->getBundleFileName();
-				$asyncRunner = new AsyncRunner($bundleFilePath);
-				if ($asyncRunner->isComplete()) {
-					if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
-						$responseValues = array('transId' => $transId);
-						// REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03
-						return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
-					}
-					$bundle->cleanUp();
-					$asyncRunner->cleanUp();
-					$responseValues = array('transId' => $transId);
-					return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
-				} else {
-					$responseValues = array('transId' => $transId, 'sow' => $bundle->getOffset());
-					return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
-				}
+			case BundleHelper::State_Verify:
+				return $this->completePushBundle($bundle, $hg, $transId);
 				break;
+			case BundleHelper::State_Unbundle:
+				return $this->completePushBundle($bundle, $hg, $transId);
+				break;
+		}
+	}
+
+	/**
+	 * 
+	 * @param BundleHelper $bundle
+	 * @param HgRunner $hg
+	 * @param string $transId
+	 * @throws UnrelatedRepoException
+	 * @throws Exception
+	 * @return boolean True if finished, otherwise not finished yet
+	 */
+	function completePushBundle($bundle, $hg, $transId) {
+		try {  // REVIEW Would be nice if the try / catch logic was universal. ie one policy for the api function. CP 2012-06
+			$bundleFilePath = $bundle->getBundleFileName();
+
+			switch ($bundle->getState()) {
+				case BundleHelper::State_Uploading:
+					$bundle->setState(BundleHelper::State_Verify);
+					$hg->startVerify($bundleFilePath);
+					// fall through to State_Verify
+				case BundleHelper::State_Verify:
+					if ($hg->completeVerify($bundleFilePath)) {
+						$bundle->setState(BundleHelper::State_Unbundle);
+						$hg->unbundle($bundleFilePath);
+					} else {
+						return new HgResumeResponse(HgResumeResponse::TIMEOUT, array('transId' => $transId, 'Note' => 'Verification in progress...'));
+					}
+					// fall through to State_Unbundle
+				case BundleHelper::State_Unbundle:
+					$asyncRunner = new AsyncRunner($bundleFilePath);
+					if ($asyncRunner->synchronize()) {
+						if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
+							$responseValues = array('transId' => $transId);
+							// REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03
+							return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
+						}
+						$bundle->cleanUp();
+						$asyncRunner->cleanUp();
+						$responseValues = array('transId' => $transId);
+						return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
+					} else {
+						return new HgResumeResponse(HgResumeResponse::TIMEOUT, array('transId' => $transId, 'Note' => 'Unpacking in progress...'));
+					}
+				}
+		} catch (UnrelatedRepoException $e) {
+			$bundle->setOffset(0);
+			$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
+			$responseValues['transId'] = $transId;
+			return new HgResumeResponse(HgResumeResponse::FAIL, $responseValues);
+		} catch (Exception $e) {
+			// REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03
+			//echo $e->getMessage(); // FIXME
+			$bundle->setOffset(0);
+			$responseValues = array('Error' => substr($e->getMessage(), 0, 1000));
+			$responseValues['transId'] = $transId;
+			return new HgResumeResponse(HgResumeResponse::RESET, $responseValues);
 		}
 	}
 

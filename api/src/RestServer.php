@@ -147,6 +147,12 @@ class RestServer {
 				$httpcode = "202 Accepted";
 				$codeString = 'INPROGRESS';
 				break;
+			case HgResumeResponse::TIMEOUT:
+				// 408 is not currently handled by the client, so it will be
+				// interpreted as a fail and result in a retry
+				$httpcode = "408 RequestTimeout";
+				$codeString = 'INPROGRESS';
+				break;
 			default:
 				throw new Exception("Unknown response code {$response->Code}");
 				break;

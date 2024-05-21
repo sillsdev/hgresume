@@ -42,14 +42,10 @@ class HgRunner {
 	}
 
 	/**
-	 * 
 	 * @param string $filepath
 	 * @throws HgException
-	 * @throws UnrelatedRepoException
-	 * @throws Exception
-	 * @return AsyncRunner
 	 */
-	function unbundle($filepath) {
+	function startVerify($filepath) {
 		if (!is_file($filepath)) {
 			throw new HgException("bundle file '$filepath' is not a file!");
 		}
@@ -58,29 +54,59 @@ class HgRunner {
 		// run hg incoming to make sure this bundle is related to the repo
 		$cmd = "hg incoming $filepath";
 		$this->logEvent("cmd: $cmd");
-		$asyncRunner = new AsyncRunner($filepath . ".incoming");
+		$asyncRunner = $this->getVerifyRunner($filepath);
 		$asyncRunner->run($cmd);
-		$asyncRunner->synchronize();
-		$output = $asyncRunner->getOutput();
-		if (preg_match('/abort:.*unknown parent/', $output)) {
-			throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
+	}
+
+	/**
+	 * @param AsyncRunner $asyncRunner
+	 * @throws UnrelatedRepoException
+	 * @throws Exception
+	 * @return boolean True if finished, otherwise not finished yet
+	 */
+	function completeVerify($filepath) {
+		$asyncRunner = $this->getVerifyRunner($filepath);
+		if ($asyncRunner->synchronize()) {
+			$output = $asyncRunner->getOutput();
+			if (preg_match('/abort:.*unknown parent/', $output)) {
+				throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
+			}
+			if (preg_match('/parent:\s*-1:/', $output)) {
+				throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
+			}
+			if (preg_match('/abort:.*not a Mercurial bundle/', $output)) {
+				throw new Exception("Project cannot be updated!  (corrupt bundle pushed to repo)");
+			}
+			return true;
 		}
-		if (preg_match('/parent:\s*-1:/', $output)) {
-			throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
+		return false;
+	}
+
+	/**
+	 * @param string $filepath
+	 * @return AsyncRunner
+	 */
+	function getVerifyRunner($filepath) {
+		return new AsyncRunner($filepath . ".incoming");
+	}
+
+	/**
+	 * 
+	 * @param string $filepath
+	 * @throws HgException
+	 * @return AsyncRunner
+	 */
+	function unbundle($filepath) {
+		if (!is_file($filepath)) {
+			throw new HgException("bundle file '$filepath' is not a file!");
 		}
-		if (preg_match('/abort:.*not a Mercurial bundle/', $output)) {
-			throw new Exception("Project cannot be updated!  (corrupt bundle pushed to repo)");
-		}
+		chdir($this->repoPath); // NOTE: I tried with -R and it didn't work for me. CP 2012-06
 
 		$cmd = "hg unbundle $filepath";
 		$this->logEvent("cmd: $cmd");
 		$asyncRunner = new AsyncRunner($filepath);
 		$asyncRunner->run($cmd);
 		return $asyncRunner;
-	}
-	
-	function assertIsRelatedRepo($bundleFilePath) {
-		
 	}
 
 	/**

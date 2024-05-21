@@ -61,6 +61,13 @@ class HgResumeResponse {
 	// HTTP 202 Accepted
 	const INPROGRESS = 9;
 
+	/* TIMEOUT
+	 * The server is in the middle of an operation that was not completed during the request.
+	 * The client should poll the server to ensure any additional operations are started.
+	 * Used only by pushBundleChunk */
+	// HTTP 408 RequestTimeout
+	const TIMEOUT = 9;
+
 	public $Code;
 	public $Values;
 	public $Content;
