@@ -279,7 +279,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 
 		$assembledBundle = '';
 		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
-		while (mb_strlen($assembledBundle) < $bundleSize) {
+		while (mb_strlen($assembledBundle, "8bit") < $bundleSize) {
 			$response = $this->api->pullBundleChunkInternal('sampleHgRepo2', array($hash), $offset, $chunkSize, $transId, true);
 			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 			$bundleSize = $response->Values['bundleSize'];
@@ -302,7 +302,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 
 		$assembledBundle = '';
 		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
-		while (mb_strlen($assembledBundle) < $bundleSize) {
+		while (mb_strlen($assembledBundle, "8bit") < $bundleSize) {
 			$response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', array($hash), $offset, $chunkSize, $transId, true);
 			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 			$bundleSize = $response->Values['bundleSize'];
@@ -326,7 +326,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 
 		$assembledBundle = '';
 		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
-		while (mb_strlen($assembledBundle) < $bundleSize) {
+		while (mb_strlen($assembledBundle, "8bit") < $bundleSize) {
 			$response = $this->api->pullBundleChunkInternal('sample2branchHgRepo', $hashes, $offset, $chunkSize, $transId, true);
 			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 			$bundleSize = $response->Values['bundleSize'];
@@ -426,7 +426,7 @@ class TestOfHgResumeAPI extends UnitTestCase {
 
 		$assembledBundle = '';
 		$bundleSize = 1; // initialize the bundleSize; it will be overwritten after the first API call
-		while (mb_strlen($assembledBundle) < $bundleSize) {
+		while (mb_strlen($assembledBundle, "8bit") < $bundleSize) {
 			$response = $this->api->pullBundleChunkInternal('sampleHgRepo2', array($hash), $offset, $chunkSize, $transId, true);
 			$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
 			$bundleSize = $response->Values['bundleSize'];
