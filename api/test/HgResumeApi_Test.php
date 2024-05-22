@@ -493,6 +493,42 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$response = $this->api->pushBundleChunk('sampleHgRepo', $bundleSize, 0, $bundleData, $transId);
 		$this->assertEqual(HgResumeResponse::FAIL, $response->Code);
 	}
+	
+	function testPushBundleChunk_lastChunkTimesoutDuringHgIncoming_IsPickedUpByFollowUpRequest() {
+		$this->testEnvironment->makeRepo(TestPath . "/data/sampleHgRepo.zip");
+		$transId = __FUNCTION__;
+		$this->api->finishPushBundle($transId);
+
+		$bundleData = file_get_contents(TestPath . "/data/sample.bundle");
+
+		// Simulate a request timeout during hg unbundle
+		$this->pushFullBundle_KillDuringHgUnbundle('sampleHgRepo', $bundleData, $transId);
+
+		// Ensure that a follow up pushBundle successfully completes the unbundle
+		$bundleSize = mb_strlen($bundleData, "8bit");
+		$response = $this->api->pushBundleChunk('sampleHgRepo', $bundleSize, 0, $bundleData, $transId);
+		$this->assertEqual(HgResumeResponse::SUCCESS, $response->Code);
+	}
+
+	function pushFullBundle_KillDuringHgUnbundle($repoId, $bundleData, $transId) {
+		// fork a child process so we can kill unfinished work
+		$pid = pcntl_fork();
+
+		if ($pid == -1) {
+				throw new Exception('Failed to fork');
+		} elseif ($pid) { // PARENT
+				// Wait until hg incoming has started running
+				// it starts almost instantly and takes at least 500ms to run, because 500ms is the length of AsyncRunner's synchronize interval
+				usleep(250 * 1000);
+				// Kill so that nothing happens when hg incoming is done
+				posix_kill($pid, SIGTERM);
+		} else { // CHILD
+			$bundleSize = mb_strlen($bundleData, "8bit");
+			// push the entire bundle so that hg incoming is triggered
+			$response = $this->api->pushBundleChunk($repoId, $bundleSize, 0, $bundleData, $transId);
+			throw new Exception("The child process was protected by its buggy shield of digital faithlessness.");
+		}
+	}
 }
 
 ?>
