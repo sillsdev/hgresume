@@ -6,7 +6,7 @@ class BundleHelper {
 	const State_Bundle      = 'Bundle';
 	const State_Downloading = 'Downloading';
 	const State_Uploading   = 'Uploading';
-	const State_Verify      = 'Verify';
+	const State_Validating  = 'Validating';
 	const State_Unbundle    = 'Unbundle';
 
 	private $_transactionId;

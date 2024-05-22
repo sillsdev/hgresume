@@ -149,7 +149,7 @@ class RestServer {
 				break;
 			case HgResumeResponse::TIMEOUT:
 				// 408 is not currently handled by the client, so it will be
-				// interpreted as a fail and result in a retry
+				// interpreted as a fail and result in a retry. That is the intentional behaviour for now (v03).
 				$httpcode = "408 RequestTimeout";
 				$codeString = 'INPROGRESS';
 				break;

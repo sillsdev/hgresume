@@ -91,20 +91,15 @@ class HgResumeAPI {
 				$bundle->setOffset($newSow);
 
 				// for the final chunk; assemble the bundle and apply the bundle
-				if ($newSow == $bundleSize) {
-					return $this->completePushBundle($bundle, $hg, $transId);
-				} else {
+				if ($newSow != $bundleSize) {
 					// received the chunk, but it's not the last one; we expect more chunks
 					$responseValues = array('transId' => $transId, 'sow' => $newSow);
 					return new HgResumeResponse(HgResumeResponse::RECEIVED, $responseValues);
 				}
-				break;
-			case BundleHelper::State_Verify:
-				return $this->completePushBundle($bundle, $hg, $transId);
-				break;
+			// We got everything, fall through to completePushBundle
+			case BundleHelper::State_Validating:
 			case BundleHelper::State_Unbundle:
 				return $this->completePushBundle($bundle, $hg, $transId);
-				break;
 		}
 	}
 
@@ -115,7 +110,7 @@ class HgResumeAPI {
 	 * @param string $transId
 	 * @throws UnrelatedRepoException
 	 * @throws Exception
-	 * @return boolean True if finished, otherwise not finished yet
+	 * @return HgResumeResponse
 	 */
 	function completePushBundle($bundle, $hg, $transId) {
 		try {  // REVIEW Would be nice if the try / catch logic was universal. ie one policy for the api function. CP 2012-06
@@ -123,11 +118,11 @@ class HgResumeAPI {
 
 			switch ($bundle->getState()) {
 				case BundleHelper::State_Uploading:
-					$bundle->setState(BundleHelper::State_Verify);
-					$hg->startVerify($bundleFilePath);
-					// fall through to State_Verify
-				case BundleHelper::State_Verify:
-					if ($hg->completeVerify($bundleFilePath)) {
+					$bundle->setState(BundleHelper::State_Validating);
+					$hg->startValidating($bundleFilePath);
+					// fall through to State_Validating
+				case BundleHelper::State_Validating:
+					if ($hg->finishValidating($bundleFilePath)) {
 						$bundle->setState(BundleHelper::State_Unbundle);
 						$hg->unbundle($bundleFilePath);
 					} else {

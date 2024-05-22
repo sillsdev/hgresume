@@ -45,7 +45,7 @@ class HgRunner {
 	 * @param string $filepath
 	 * @throws HgException
 	 */
-	function startVerify($filepath) {
+	function startValidating($filepath) {
 		if (!is_file($filepath)) {
 			throw new HgException("bundle file '$filepath' is not a file!");
 		}
@@ -54,7 +54,7 @@ class HgRunner {
 		// run hg incoming to make sure this bundle is related to the repo
 		$cmd = "hg incoming $filepath";
 		$this->logEvent("cmd: $cmd");
-		$asyncRunner = $this->getVerifyRunner($filepath);
+		$asyncRunner = $this->getValidationRunner($filepath);
 		$asyncRunner->run($cmd);
 	}
 
@@ -64,8 +64,8 @@ class HgRunner {
 	 * @throws Exception
 	 * @return boolean True if finished, otherwise not finished yet
 	 */
-	function completeVerify($filepath) {
-		$asyncRunner = $this->getVerifyRunner($filepath);
+	function finishValidating($filepath) {
+		$asyncRunner = $this->getValidationRunner($filepath);
 		if ($asyncRunner->synchronize()) {
 			$output = $asyncRunner->getOutput();
 			if (preg_match('/abort:.*unknown parent/', $output)) {
@@ -86,7 +86,7 @@ class HgRunner {
 	 * @param string $filepath
 	 * @return AsyncRunner
 	 */
-	function getVerifyRunner($filepath) {
+	function getValidationRunner($filepath) {
 		return new AsyncRunner($filepath . ".incoming");
 	}
 
