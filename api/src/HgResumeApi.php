@@ -99,7 +99,7 @@ class HgResumeAPI {
 			// We got everything, fall through to completePushBundle
 			case BundleHelper::State_Validating:
 			case BundleHelper::State_Unbundle:
-				return $this->completePushBundle($bundle, $hg, $transId);
+				return $this->completePushBundle($bundle, $hg, $transId, $bundleSize);
 		}
 	}
 
@@ -112,7 +112,7 @@ class HgResumeAPI {
 	 * @throws Exception
 	 * @return HgResumeResponse
 	 */
-	function completePushBundle($bundle, $hg, $transId) {
+	function completePushBundle($bundle, $hg, $transId, $bundleSize) {
 		try {  // REVIEW Would be nice if the try / catch logic was universal. ie one policy for the api function. CP 2012-06
 			$bundleFilePath = $bundle->getBundleFileName();
 
@@ -126,7 +126,7 @@ class HgResumeAPI {
 						$bundle->setState(BundleHelper::State_Unbundle);
 						$hg->unbundle($bundleFilePath);
 					} else {
-						return new HgResumeResponse(HgResumeResponse::TIMEOUT, array('transId' => $transId, 'Note' => 'Verification in progress...'));
+						return HgResumeResponse::PendingResponse($transId, 'Verification in progress...', $bundleSize);
 					}
 					// fall through to State_Unbundle
 				case BundleHelper::State_Unbundle:
@@ -142,7 +142,7 @@ class HgResumeAPI {
 						$responseValues = array('transId' => $transId);
 						return new HgResumeResponse(HgResumeResponse::SUCCESS, $responseValues);
 					} else {
-						return new HgResumeResponse(HgResumeResponse::TIMEOUT, array('transId' => $transId, 'Note' => 'Unpacking in progress...'));
+						return HgResumeResponse::PendingResponse($transId, 'Unpacking in progress...', $bundleSize);
 					}
 				}
 		} catch (UnrelatedRepoException $e) {

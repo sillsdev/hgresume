@@ -79,6 +79,22 @@ class HgResumeResponse {
 		$this->Content = $content;
 		$this->Version = $version;
 	}
+
+	/**
+	 * There's no explicit polling mechanism in the v3 client.
+	 * But we can make it retry by sending any status code it's not familiar with.
+	 * We can also determine the chunk size the client will use, so we make it super tiny to minimize unnecessary data transfer.
+	 * @param string $transId
+	 * @param string $note
+	 * @param int $bundleSize
+	 * @return HgResumeResponse
+	 */
+	public static function PendingResponse($transId, $note, $bundleSize) {
+		return new HgResumeResponse(HgResumeResponse::TIMEOUT, array(
+			'transId' => $transId, 'Note' => $note,
+			// Make the client send only 10 bytes
+			'sow' => $bundleSize - 10));
+	}
 }
 
 ?>
