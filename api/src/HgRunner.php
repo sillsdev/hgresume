@@ -59,14 +59,14 @@ class HgRunner {
 	}
 
 	/**
-	 * @param AsyncRunner $asyncRunner
+	 * @param string $filepath
 	 * @throws UnrelatedRepoException
 	 * @throws Exception
 	 * @return boolean True if finished, otherwise not finished yet
 	 */
 	function finishValidating($filepath) {
 		$asyncRunner = $this->getValidationRunner($filepath);
-		if ($asyncRunner->synchronize()) {
+		if ($asyncRunner->waitForIsComplete()) {
 			$output = $asyncRunner->getOutput();
 			if (preg_match('/abort:.*unknown parent/', $output)) {
 				throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
@@ -147,13 +147,15 @@ class HgRunner {
 	}
 
 	/**
-	 * helper function, mostly for tests
+	 * Helper function for tests
 	 * @param string $baseHashes[]
 	 * @param string $bundleFilePath
 	 */
 	function makeBundleAndWaitUntilFinished($baseHashes, $bundleFilePath) {
 		$asyncRunner = $this->makeBundle($baseHashes, $bundleFilePath);
-		$asyncRunner->synchronize();
+		if (!$asyncRunner->waitForIsComplete()) {
+			throw new Exception("Error: make bundle failed to complete");
+		}
 		return $asyncRunner;
 	}
 

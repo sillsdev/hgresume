@@ -131,7 +131,7 @@ class HgResumeAPI {
 					// fall through to State_Unbundle
 				case BundleHelper::State_Unbundle:
 					$asyncRunner = new AsyncRunner($bundleFilePath);
-					if ($asyncRunner->synchronize()) {
+					if ($asyncRunner->waitForIsComplete()) {
 						if (BundleHelper::bundleOutputHasErrors($asyncRunner->getOutput())) {
 							$responseValues = array('transId' => $transId);
 							// REVIEW The RESET response may not make sense in this context anymore.  Why would we want to tell the client to resend a bundle if it failed the first time?  My guess is never.  cjh 2013-03

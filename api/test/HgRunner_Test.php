@@ -36,10 +36,12 @@ class TestOfHgRunner extends UnitTestCase {
 		// check for success file
 		$hg = new HgRunner($repoPath);
 		$asyncRunner = $hg->unbundle($bundleFile);
-		$asyncRunner->synchronize();
+		$asyncRunner->waitForIsComplete();
+		$this->assertTrue($asyncRunner->isComplete());
 		$asyncRunner->cleanUp();
 		$asyncRunner = $hg->update();
-		$asyncRunner->synchronize();
+		$asyncRunner->waitForIsComplete();
+		$this->assertTrue($asyncRunner->isComplete());
 		$this->assertTrue(file_exists($successFile));
 	}
 

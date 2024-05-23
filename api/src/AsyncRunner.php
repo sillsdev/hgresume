@@ -67,7 +67,7 @@ class AsyncRunner
 	 * Waits for up to 5s for the runner to complete
 	 * @return boolean	True if complete, otherwise not complete yet
 	 */
-	public function synchronize() {
+	public function waitForIsComplete() {
 		for ($i = 0; $i < 5; $i++) {
 			if ($this->isComplete()) {
 				return true;
