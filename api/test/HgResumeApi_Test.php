@@ -515,17 +515,17 @@ class TestOfHgResumeAPI extends UnitTestCase {
 		$pid = pcntl_fork();
 
 		if ($pid == -1) {
-				throw new Exception('Failed to fork');
+			throw new Exception('Failed to fork');
 		} elseif ($pid) { // PARENT
-				// Wait until hg incoming has started running
-				// it starts almost instantly and takes at least 500ms to run, because 500ms is the length of AsyncRunner's synchronize interval
-				usleep(250 * 1000);
-				// Kill so that nothing happens when hg incoming is done
-				posix_kill($pid, SIGTERM);
+			// Wait until hg incoming has started running
+			// it starts almost instantly and takes at least 500ms to run, because 500ms is the length of AsyncRunner's synchronize interval
+			usleep(250 * 1000);
+			// Kill so that nothing happens when hg incoming is done
+			posix_kill($pid, SIGTERM);
 		} else { // CHILD
 			$bundleSize = mb_strlen($bundleData, "8bit");
 			// push the entire bundle so that hg incoming is triggered
-			$response = $this->api->pushBundleChunk($repoId, $bundleSize, 0, $bundleData, $transId);
+			$this->api->pushBundleChunk($repoId, $bundleSize, 0, $bundleData, $transId);
 			throw new Exception("The child process was protected by its buggy shield of digital faithlessness.");
 		}
 	}
