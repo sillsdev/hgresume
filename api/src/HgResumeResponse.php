@@ -61,6 +61,13 @@ class HgResumeResponse {
 	// HTTP 202 Accepted
 	const INPROGRESS = 9;
 
+	/* TIMEOUT
+	 * The server is in the middle of an operation that was not completed during the request.
+	 * The client should poll the server to ensure any additional operations are started.
+	 * Used only by pushBundleChunk */
+	// HTTP 408 RequestTimeout
+	const TIMEOUT = 9;
+
 	public $Code;
 	public $Values;
 	public $Content;
@@ -71,6 +78,22 @@ class HgResumeResponse {
 		$this->Values = $values;
 		$this->Content = $content;
 		$this->Version = $version;
+	}
+
+	/**
+	 * There's no explicit polling mechanism in the v3 client.
+	 * But we can make it retry by sending any status code it's not familiar with.
+	 * We can also determine the chunk size the client will use, so we make it super tiny to minimize unnecessary data transfer.
+	 * @param string $transId
+	 * @param string $note
+	 * @param int $bundleSize
+	 * @return HgResumeResponse
+	 */
+	public static function PendingResponse($transId, $note, $bundleSize) {
+		return new HgResumeResponse(HgResumeResponse::TIMEOUT, array(
+			'transId' => $transId, 'Note' => $note,
+			// Make the client send only 10 bytes
+			'sow' => $bundleSize - 10));
 	}
 }
 
