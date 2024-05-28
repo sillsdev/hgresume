@@ -11,3 +11,7 @@ RUN apt-get update  \
 RUN a2enmod rewrite
 RUN mkdir -p /var/cache/hgresume/ /var/vcs/ && chown -R www-data:www-data /var/cache/hgresume/ /var/vcs/
 COPY --chown=www-data api /var/www/html/api/v03/
+# cache volume
+VOLUME /var/cache/hgresume
+# repos volume
+VOLUME /var/vcs/public
