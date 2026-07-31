@@ -5,14 +5,20 @@ on:
   push:
     branches:
       - dockerize
+      - claude/csharp-rewrite
+  pull_request:
+
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build:
-    name: Push docker image to Github packages
+    name: Build and push docker image to GitHub packages
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout
@@ -21,6 +27,10 @@ jobs:
       - name: Set Version
         run: |
           echo "VERSION=v$(date --rfc-3339=date)" >> ${GITHUB_ENV}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -36,13 +46,18 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # For a pull request this produces the tag `pr-<number>`, so the image can be pulled and
+          # tested in a real environment: `docker pull ghcr.io/<repo>:pr-<number>`.
           tags: |
             type=ref,event=branch
-            ${{ env.VERSION }}
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+            type=ref,event=pr
+            type=raw,value=${{ env.VERSION }},enable=${{ github.event_name != 'pull_request' }}
+
+      - name: Build and push Docker image (C#)
+        uses: docker/build-push-action@v6
         with:
-          context: .
+          context: csharp
+          file: csharp/Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}

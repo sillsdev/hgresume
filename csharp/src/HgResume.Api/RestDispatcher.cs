@@ -1,0 +1,188 @@
+using System.Text;
+using Microsoft.AspNetCore.Http;
+
+namespace HgResume.Api;
+
+/// <summary>
+/// Mirrors api/src/RestServer.php. Dispatches on the last path segment, binds query/body params by
+/// name (PHP-style, including baseHashes[] arrays), and writes the X-HgR-* response contract that the
+/// Chorus client parses. Prefix-agnostic so /api/v03/&lt;method&gt; keeps working without hardcoding it.
+/// </summary>
+public sealed class RestDispatcher
+{
+    private readonly ApiConfig _config;
+    private readonly HgResumeApi _api;
+
+    public RestDispatcher(ApiConfig config, HgResumeApi api)
+    {
+        _config = config;
+        _api = api;
+    }
+
+    public async Task HandleAsync(HttpContext context)
+    {
+        string methodName = LastPathSegment(context.Request.Path.Value ?? "");
+        byte[] body = await ReadBodyAsync(context.Request);
+        var query = context.Request.Query;
+
+        HgResumeResponse response;
+        switch (methodName)
+        {
+            case "pushBundleChunk":
+                response = _api.PushBundleChunk(
+                    Str(query, "repoId"),
+                    PhpInt(Str(query, "bundleSize")),
+                    PhpInt(Str(query, "offset")),
+                    body,
+                    Str(query, "transId"));
+                break;
+
+            case "pullBundleChunk":
+                response = _api.PullBundleChunk(
+                    Str(query, "repoId"),
+                    BaseHashes(query),
+                    PhpInt(Str(query, "offset")),
+                    PhpInt(Str(query, "chunkSize")),
+                    Str(query, "transId"));
+                break;
+
+            case "getRevisions":
+                response = _api.GetRevisions(
+                    Str(query, "repoId"),
+                    PhpInt(Str(query, "offset")),
+                    PhpInt(Str(query, "quantity")));
+                break;
+
+            case "finishPushBundle":
+                response = _api.FinishPushBundle(Str(query, "transId"));
+                break;
+
+            case "finishPullBundle":
+                response = _api.FinishPullBundle(Str(query, "transId"));
+                break;
+
+            case "isAvailable":
+                response = _api.IsAvailable();
+                break;
+
+            default:
+                response = new HgResumeResponse(HgResumeResponse.FAIL,
+                    new Dictionary<string, string> { ["Error"] = $"Unknown method '{methodName}'" },
+                    $"Unknown method '{methodName}'");
+                break;
+        }
+
+        await SendResponseAsync(context, response);
+    }
+
+    private async Task SendResponseAsync(HttpContext context, HgResumeResponse response)
+    {
+        var (httpCode, hgrStatus) = MapHgResponse(response.Code);
+
+        var res = context.Response;
+        res.StatusCode = httpCode;
+        res.Headers["X-HgR-Version"] = response.Version.ToString();
+        res.Headers["X-HgR-Status"] = hgrStatus;
+        foreach (var kv in response.Values)
+        {
+            res.Headers["X-HgR-" + UcFirst(kv.Key)] = SanitizeHeader(kv.Value);
+        }
+        res.ContentType = "application/octet-stream";
+
+        if (response.Content.Length > 0)
+        {
+            await res.Body.WriteAsync(response.Content);
+        }
+    }
+
+    // Mirrors RestServer::mapHgResponse. Because INPROGRESS and TIMEOUT share value 9 and INPROGRESS is
+    // listed first in the PHP switch, code 9 always maps to 202 / "INPROGRESS" (the 408 branch is dead).
+    private static (int HttpCode, string Status) MapHgResponse(int code) => code switch
+    {
+        HgResumeResponse.SUCCESS => (200, "SUCCESS"),
+        HgResumeResponse.RECEIVED => (202, "RECEIVED"),
+        HgResumeResponse.RESET => (400, "RESET"),
+        HgResumeResponse.UNAUTHORIZED => (401, "UNAUTHORIZED"),
+        HgResumeResponse.FAIL => (400, "FAIL"),
+        HgResumeResponse.UNKNOWNID => (400, "UNKNOWNID"),
+        HgResumeResponse.NOCHANGE => (304, "NOCHANGE"),
+        HgResumeResponse.NOTAVAILABLE => (503, "NOTAVAILABLE"),
+        HgResumeResponse.INPROGRESS => (202, "INPROGRESS"), // also covers TIMEOUT (== 9)
+        _ => throw new Exception($"Unknown response code {code}"),
+    };
+
+    private static string LastPathSegment(string path)
+    {
+        var segments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length == 0 ? "" : segments[^1];
+    }
+
+    private static async Task<byte[]> ReadBodyAsync(HttpRequest request)
+    {
+        using var ms = new MemoryStream();
+        await request.Body.CopyToAsync(ms);
+        return ms.ToArray();
+    }
+
+    private static string Str(IQueryCollection query, string key)
+    {
+        return query.TryGetValue(key, out var v) ? v.ToString() : "";
+    }
+
+    // Client emits baseHashes[]=a&baseHashes[]=b (PHP array style). Accept that, plus scalar and
+    // indexed forms defensively.
+    private static List<string> BaseHashes(IQueryCollection query)
+    {
+        var result = new List<string>();
+        if (query.TryGetValue("baseHashes[]", out var bracketed))
+        {
+            result.AddRange(bracketed.Where(s => s != null)!.Select(s => s!));
+        }
+        if (result.Count == 0 && query.TryGetValue("baseHashes", out var scalar))
+        {
+            result.AddRange(scalar.Where(s => s != null)!.Select(s => s!));
+        }
+        if (result.Count == 0)
+        {
+            foreach (var kv in query)
+            {
+                if (kv.Key.StartsWith("baseHashes[") && kv.Key.EndsWith("]"))
+                {
+                    result.AddRange(kv.Value.Where(s => s != null)!.Select(s => s!));
+                }
+            }
+        }
+        return result;
+    }
+
+    /// <summary>Uppercases the first character only, mirroring PHP ucfirst().</summary>
+    private static string UcFirst(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return s;
+        return char.ToUpperInvariant(s[0]) + s.Substring(1);
+    }
+
+    private static string SanitizeHeader(string value) => value.Replace("\r", " ").Replace("\n", " ");
+
+    /// <summary>
+    /// Lenient integer parse mirroring PHP intval() on a query string: leading sign + digits, else 0.
+    /// This makes a non-numeric bundleSize collapse to 0 (so offset 0 >= 0 -> FAIL, matching the
+    /// PHP invalid-bundleSize test).
+    /// </summary>
+    private static int PhpInt(string s)
+    {
+        if (string.IsNullOrEmpty(s)) return 0;
+        int i = 0;
+        var sb = new StringBuilder();
+        if (s[0] == '+' || s[0] == '-')
+        {
+            sb.Append(s[0]);
+            i = 1;
+        }
+        for (; i < s.Length && char.IsDigit(s[i]); i++)
+        {
+            sb.Append(s[i]);
+        }
+        return int.TryParse(sb.ToString(), out var result) ? result : 0;
+    }
+}
