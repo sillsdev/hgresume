@@ -13,8 +13,44 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  test:
+    name: Build image and run HTTP-level tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image for tests (amd64, loaded into docker)
+        uses: docker/build-push-action@v6
+        with:
+          context: csharp
+          file: csharp/Dockerfile
+          load: true
+          platforms: linux/amd64
+          tags: hgresume-csharp:test
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Run HTTP-level tests against the image
+        working-directory: csharp
+        env:
+          # The test fixture drives a container via this CLI (docker on the runner); it starts/stops
+          # the pre-built image itself, so we skip the fixture's own build step.
+          HGRESUME_PODMAN: docker
+          HGRESUME_IMAGE: hgresume-csharp:test
+          HGRESUME_SKIP_BUILD: '1'
+          HGRESUME_PORT: '8034'
+        run: dotnet test test/HgResume.HttpTests/HgResume.HttpTests.csproj --logger "console;verbosity=normal"
+
   build:
     name: Build and push docker image to GitHub packages
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
