@@ -32,6 +32,7 @@ Authentication is intentionally **not** implemented here; it is handled by the s
 | `HGRESUME_CACHE_PATH` | `/var/cache/hgresume` | bundle + transaction cache |
 | `HGRESUME_REPO_PATHS` | `/var/vcs/public;/var/vcs/private` | `;`-separated repo search paths |
 | `HGRESUME_MAINTENANCE_FILE` | `<cache>/maintenance_message.txt` | non-empty file ⇒ 503 maintenance mode |
+| `HGRESUME_MAX_REQUEST_BODY_SIZE` | `30000000` | max request body bytes (Kestrel; raise for whole-bundle pushes) |
 | `ASPNETCORE_URLS` | `http://+:80` | listen address |
 
 ## Build & run

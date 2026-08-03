@@ -10,9 +10,18 @@ public sealed class ApiConfig
 {
     public const int ApiVersion = 3; // PHP: define('API_VERSION', 3)
 
+    /// <summary>Kestrel's stock default (30_000_000). PHP deployments had an analogous post_max_size.</summary>
+    public const long DefaultMaxRequestBodySize = 30_000_000;
+
     public required string CachePath { get; init; }
     public required IReadOnlyList<string> RepoSearchPaths { get; init; }
     public required string MaintenanceFilePath { get; init; }
+
+    /// <summary>
+    /// Max pushBundleChunk (and any other) request body in bytes. Maps to
+    /// KestrelServerLimits.MaxRequestBodySize. Oversize bodies get a bare 413 before the dispatcher.
+    /// </summary>
+    public required long MaxRequestBodySize { get; init; }
 
     public static ApiConfig FromEnvironment()
     {
@@ -26,6 +35,7 @@ public sealed class ApiConfig
             RepoSearchPaths = repos
                 .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             MaintenanceFilePath = maintenance,
+            MaxRequestBodySize = EnvLong("HGRESUME_MAX_REQUEST_BODY_SIZE", DefaultMaxRequestBodySize),
         };
     }
 
@@ -33,5 +43,11 @@ public sealed class ApiConfig
     {
         string? v = Environment.GetEnvironmentVariable(name);
         return string.IsNullOrWhiteSpace(v) ? fallback : v;
+    }
+
+    private static long EnvLong(string name, long fallback)
+    {
+        string? v = Environment.GetEnvironmentVariable(name);
+        return long.TryParse(v, out var n) && n > 0 ? n : fallback;
     }
 }

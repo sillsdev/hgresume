@@ -1,9 +1,17 @@
 using HgResume.Api;
 
 var builder = WebApplication.CreateBuilder(args);
+var config = ApiConfig.FromEnvironment();
+
+// Make the push body cap explicit (and env-overridable) rather than relying on Kestrel's implicit
+// 30 MB default — oversize bodies are rejected with a bare 413 before RestDispatcher runs.
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.Limits.MaxRequestBodySize = config.MaxRequestBodySize;
+});
+
 var app = builder.Build();
 
-var config = ApiConfig.FromEnvironment();
 var api = new HgResumeApi(config);
 var dispatcher = new RestDispatcher(config, api);
 
