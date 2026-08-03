@@ -11,9 +11,8 @@ RUN dotnet publish src/HgResume.Api/HgResume.Api.csproj -c Release -o /app /p:Us
 # ---- runtime -----------------------------------------------------------------
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 # mercurial: required for all hg operations (shelled out to, same as the PHP app).
-# unzip: lets the test harness seed repos into the repo volume via `podman exec`.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends mercurial unzip \
+    && apt-get install -y --no-install-recommends mercurial \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

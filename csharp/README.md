@@ -20,9 +20,10 @@ Authentication is intentionally **not** implemented here; it is handled by the s
   - `BundleHelper` — per-transaction state + metadata (stored as JSON).
 - `test/HgResume.HttpTests/` — HTTP-level xUnit tests ported from `api/test/HgResumeApi_Test.php`. They
   drive the **running container** over HTTP (via a podman-managed fixture) and assert on the protocol.
-- `Dockerfile` — multi-stage `dotnet/sdk:10.0` → `dotnet/aspnet:10.0`, installs `mercurial` (+ `unzip`
-  for test seeding). Listens on port 80 and exposes the same `/var/cache/hgresume` and `/var/vcs/public`
-  volumes as the PHP image, so it is a drop-in replacement in the existing `docker-compose.yaml`.
+- `Dockerfile` — multi-stage `dotnet/sdk:10.0` → `dotnet/aspnet:10.0`, installs `mercurial`.
+  Listens on port 80 and exposes the same `/var/cache/hgresume` and `/var/vcs/public` volumes as the
+  PHP image, so it is a drop-in replacement in the existing `docker-compose.yaml`.
+- `.dockerignore` — keeps `test/` (including large fixture zips) out of the image build context.
 
 ## Configuration (environment variables)
 
@@ -45,8 +46,8 @@ curl -i http://localhost:8034/api/v03/isAvailable
 
 ## Tests
 
-The HTTP-level suite builds the image, runs it in a container, seeds fixture repos with
-`podman cp` + `podman exec unzip`, and exercises the protocol end-to-end:
+The HTTP-level suite builds the image, runs it in a container, seeds fixture repos by extracting
+zips on the host and `podman cp`-ing them in, and exercises the protocol end-to-end:
 
 ```bash
 ./run-tests.sh          # or: pwsh ./run-tests.ps1

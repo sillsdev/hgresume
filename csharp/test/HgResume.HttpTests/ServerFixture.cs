@@ -1,13 +1,13 @@
 using System.Diagnostics;
-using System.Text;
+using System.IO.Compression;
 using Xunit;
 
 namespace HgResume.HttpTests;
 
 /// <summary>
 /// Shared fixture that runs the hgresume C# image in a container (via podman) and drives it over HTTP.
-/// It seeds Mercurial repos into the repo volume with `podman cp` + `podman exec unzip`, so the tests
-/// are true black-box HTTP-level tests against the built image.
+/// It seeds Mercurial repos into the repo volume by extracting fixtures on the host and
+/// <c>podman cp</c>-ing them in, so the production image does not need unzip.
 ///
 /// Environment overrides:
 ///   HGRESUME_PODMAN     container CLI (default "podman")
@@ -97,21 +97,31 @@ public sealed class ServerFixture : IAsyncLifetime
 
     // ---- repo/maintenance seeding ---------------------------------------------------------------
 
-    /// <summary>Unzips a fixture repo into /var/vcs/public/&lt;repoId&gt;. Returns the repoId.</summary>
+    /// <summary>Extracts a fixture repo zip on the host into /var/vcs/public/&lt;repoId&gt;. Returns the repoId.</summary>
     public string SeedRepo(string zipName)
     {
         string repoId = Path.GetFileNameWithoutExtension(zipName);
         string localZip = Path.Combine(_dataDir, zipName);
         if (!File.Exists(localZip)) throw new FileNotFoundException($"fixture not found: {localZip}");
 
-        Run(_podman, "cp", localZip, $"{ContainerName}:/tmp/{zipName}");
-        string cmd = $"rm -rf /var/vcs/public/{repoId} && mkdir -p /var/vcs/public/{repoId} && " +
-                     $"cd /var/vcs/public/{repoId} && unzip -oq /tmp/{zipName}";
-        if (!string.IsNullOrEmpty(_repoOwner))
+        string extractDir = Path.Combine(Path.GetTempPath(), "hgresume-seed-" + Guid.NewGuid().ToString("N"));
+        try
         {
-            cmd += $" && chown -R {_repoOwner}:{_repoOwner} /var/vcs/public/{repoId}";
+            Directory.CreateDirectory(extractDir);
+            ZipFile.ExtractToDirectory(localZip, extractDir);
+
+            Exec($"rm -rf /var/vcs/public/{repoId}");
+            Run(_podman, "cp", extractDir, $"{ContainerName}:/var/vcs/public/{repoId}");
+            if (!string.IsNullOrEmpty(_repoOwner))
+            {
+                Exec($"chown -R {_repoOwner}:{_repoOwner} /var/vcs/public/{repoId}");
+            }
         }
-        Exec(cmd);
+        finally
+        {
+            try { Directory.Delete(extractDir, recursive: true); }
+            catch { /* best-effort temp cleanup */ }
+        }
         return repoId;
     }
 
