@@ -20,13 +20,13 @@ public class SendReceiveTests
 
     private readonly ITestOutputHelper _output;
     private readonly HgResumeServerFixture _server;
-    private readonly SendReceiveService _sr;
+    private readonly MercurialService _sr;
 
     public SendReceiveTests(ITestOutputHelper output, HgResumeServerFixture server)
     {
         _output = output;
         _server = server;
-        _sr = new SendReceiveService(output);
+        _sr = new MercurialService(output);
     }
 
     [Theory]
@@ -58,6 +58,31 @@ public class SendReceiveTests
         var tipAfterModify = await _server.GetServerTip(code);
         _output.WriteLine($"server tip after modify: {tipAfterModify}");
         tipAfterModify.Should().NotBe(tipAfterFirstPush, "the modify should have produced a new commit on the server");
+    }
+
+    [Fact]
+    public async Task CloneProject()
+    {
+        // Push a project to the server first so there is something to clone.
+        var code = NewCode();
+        var project = InitLocalFlexProjectWithRepo(code);
+        _server.InitServerRepo(code);
+        var srp = new SendReceiveParams(HgProtocol.Resumable, _server.BaseUrl, project);
+        _sr.SendReceiveProject(srp, Auth);
+        (await _server.GetServerTip(code)).Should().NotBe("0", "the project should have been pushed to the server");
+
+        // Clone it into a fresh directory over the resumable protocol.
+        var cloneDir = Path.Join(BasePath, $"{code}-clone");
+        if (Directory.Exists(cloneDir)) Directory.Delete(cloneDir, true);
+        var cloneParams = new SendReceiveParams(HgProtocol.Resumable, _server.BaseUrl, new ProjectPath(code, cloneDir));
+        var clonedTo = _sr.CloneProject(cloneParams, Auth, cloneDir);
+
+        // The cloned working directory should contain the fwdata, byte-identical to what we pushed.
+        var clonedFwData = Path.Join(clonedTo, $"{code}.fwdata");
+        File.Exists(clonedFwData).Should().BeTrue($"clone at {clonedTo} should contain the fwdata");
+        new FileInfo(clonedFwData).Length.Should().Be(new FileInfo(project.FwDataFile).Length);
+        File.ReadAllBytes(clonedFwData).SequenceEqual(File.ReadAllBytes(project.FwDataFile))
+            .Should().BeTrue("the cloned fwdata should match the pushed fwdata");
     }
 
     [Fact]

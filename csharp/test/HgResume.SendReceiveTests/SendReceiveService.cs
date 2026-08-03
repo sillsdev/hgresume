@@ -16,11 +16,11 @@ namespace HgResume.SendReceiveTests;
 /// (RepositoryAddress.IsKnownResumableRepository). Our server ignores auth, but the Chorus client still
 /// requires non-empty credentials, which we set via ServerSettingsModel.SaveUserSettings().
 /// </summary>
-public class SendReceiveService
+public class MercurialService
 {
     private readonly ITestOutputHelper _output;
 
-    public SendReceiveService(ITestOutputHelper output) => _output = output;
+    public MercurialService(ITestOutputHelper output) => _output = output;
 
     private StringBuilderProgress NewProgress() => new()
     {
@@ -57,7 +57,10 @@ public class SendReceiveService
         return progress.Text;
     }
 
-    /// <summary>Clone the server repo into destDir (exercises the resumable pull path).</summary>
+    /// <summary>
+    /// Clone the server repo into destDir (exercises the resumable pull path). Returns the actual
+    /// clone directory (Chorus may adjust it if destDir already exists).
+    /// </summary>
     public string CloneProject(SendReceiveParams p, SendReceiveAuth auth, string destDir)
     {
         SaveCredentials(auth);
@@ -66,7 +69,9 @@ public class SendReceiveService
         var address = RepositoryAddress.Create("LexBox", repoUrl);
         try
         {
-            HgRepository.Clone(address, destDir, progress);
+            string clonedTo = HgRepository.Clone(address, destDir, progress);
+            _output.WriteLine(progress.Text);
+            return clonedTo;
         }
         catch (Exception e)
         {
@@ -74,8 +79,6 @@ public class SendReceiveService
             _output.WriteLine("--- Chorus progress ---\n" + progress.Text);
             throw new Exception($"Clone failed: {e.Message}\n--- Chorus progress ---\n{progress.Text}", e);
         }
-        _output.WriteLine(progress.Text);
-        return progress.Text;
     }
 
     private static string RepoUrl(SendReceiveParams p) => $"http://{p.BaseUrl}/{p.Code}";
