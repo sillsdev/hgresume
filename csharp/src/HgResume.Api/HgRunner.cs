@@ -182,7 +182,14 @@ public sealed class HgRunner
             var (tip, _) = ProcessRunner.RunSync(RepoPath, "hg", "tip", "--template", "{rev}:{branches}\n");
             if (tip.Count == 1 && tip[0].StartsWith("-1"))
             {
-                // e.g. '-1:default' -> '0:default' to signal the empty repo
+                // Empty repo (hg init, zero changesets). At offset 0 we emit '0:<branch>' (from
+                // '-1:<branch>') as the sentinel callers expect; past offset 0 there is nothing more,
+                // so return empty. Returning the sentinel for every offset would make paginating
+                // callers (e.g. IsValidBase) loop forever, since they never see an empty page.
+                if (offset > 0)
+                {
+                    return new List<string>();
+                }
                 tip[0] = Regex.Replace(tip[0], "^-1", "0");
                 return tip;
             }
@@ -205,7 +212,7 @@ public sealed class HgRunner
             var revisions = GetRevisions(i, q);
             if (revisions.Count == 0)
             {
-                return false;
+                return false; // paged past the last revision without matching every hash
             }
             foreach (var hashAndBranch in revisions)
             {
@@ -217,8 +224,16 @@ public sealed class HgRunner
                     if (foundHash >= hashes.Count) break;
                 }
             }
+            // A page shorter than the requested quantity means hg returned everything it had, so this
+            // was the last page. Stop rather than advancing the offset again: this guarantees the loop
+            // terminates even if GetRevisions ever returns a fixed non-empty page regardless of offset
+            // (the empty-repo '0:' sentinel bug, or any similar future quirk).
+            if (revisions.Count < q)
+            {
+                break;
+            }
             i += q;
         }
-        return true;
+        return foundHash >= hashes.Count;
     }
 }

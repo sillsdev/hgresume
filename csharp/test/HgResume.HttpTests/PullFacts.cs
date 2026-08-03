@@ -157,6 +157,31 @@ public sealed class PullFacts
     }
 
     [Fact]
+    public async Task PullBundleChunk_EmptyRepoWithNonZeroBaseHash_FailsWithoutHanging()
+    {
+        // Regression: IsValidBase looped forever on an empty (hg init, zero-changeset) repo whenever the
+        // requested baseHash was anything other than "0". GetRevisions returns ["0:"] for the empty repo
+        // regardless of offset, so the hash is never found and IsValidBase keeps advancing the offset and
+        // re-querying forever, hanging the request. Contrast with PullBundleChunk_EmptyRepositoryReturnsNoChanges,
+        // which passes baseHash "0" and short-circuits before the loop.
+        _fx.SeedRepo("emptyHgRepo.zip");
+        string tx = nameof(PullBundleChunk_EmptyRepoWithNonZeroBaseHash_FailsWithoutHanging);
+        Api.FinishPullBundle(tx);
+
+        // Run on a background task with a timeout so the bug surfaces as a fast, clear failure rather than
+        // hanging until the HTTP client's 120s timeout (or forever, once the fix removes that safety net).
+        var call = Task.Run(() => Api.PullBundleChunk("emptyHgRepo", new[] { "fakehash" }, 0, 50, tx));
+        var finished = await Task.WhenAny(call, Task.Delay(TimeSpan.FromSeconds(30)));
+        Assert.True(finished == call,
+            "PullBundleChunk against an empty repo with a non-zero baseHash did not return within 30s — " +
+            "IsValidBase is looping forever.");
+
+        // An unknown baseHash is invalid, so the API should reject it the same way it does on a non-empty repo.
+        var r = await call;
+        Assert.Equal("FAIL", r.Status);
+    }
+
+    [Fact]
     public void PullBundleChunk_LongMakeBundle_InProgressCode()
     {
         _fx.SeedRepo("sampleLargeBundleHgRepo.zip");
