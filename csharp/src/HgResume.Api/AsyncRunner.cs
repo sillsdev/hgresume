@@ -50,7 +50,10 @@ public sealed class AsyncRunner
                    ?? throw new AsyncRunnerException($"failed to start process '{program}'");
 
         string lockFile = _lockFile;
-        var task = Task.Run(async () =>
+        // Assigned before the body can observe it: Task.Run queues to the thread pool and returns
+        // the Task before the delegate runs (except under a sync context that runs inline).
+        Task task = null!;
+        task = Task.Run(async () =>
         {
             try
             {
@@ -77,10 +80,17 @@ public sealed class AsyncRunner
             finally
             {
                 proc.Dispose();
-                Running.TryRemove(lockFile, out _);
+                // Value-conditional remove so we never clear a newer run for the same lock path.
+                Running.TryRemove(KeyValuePair.Create(lockFile, task));
             }
         });
+        // Insert after Task.Run returns. A very fast command can finish (and TryRemove in finally)
+        // before that insert, which would otherwise leave a leaked entry for the process lifetime.
         Running[lockFile] = task;
+        if (task.IsCompleted)
+        {
+            Running.TryRemove(KeyValuePair.Create(lockFile, task));
+        }
     }
 
     public bool IsRunning() => File.Exists(_lockFile);
