@@ -4,5 +4,6 @@
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/HgResume.HttpTests/HgResume.HttpTests.csproj" />
+    <Project Path="test/HgResume.SendReceiveTests/HgResume.SendReceiveTests.csproj" />
   </Folder>
 </Solution>
