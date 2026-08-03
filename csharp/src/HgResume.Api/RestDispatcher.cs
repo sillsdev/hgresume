@@ -25,55 +25,101 @@ public sealed class RestDispatcher
         byte[] body = await ReadBodyAsync(context.Request);
         var query = context.Request.Query;
 
+        // Always answer with the X-HgR-* contract. PHP RestServer::serverError did the same for
+        // missing params / unknown methods; without this catch, BundleHelper's ValidationException
+        // (empty/invalid transId) escapes as a bare ASP.NET 500 with no protocol headers.
         HgResumeResponse response;
+        try
+        {
+            response = Dispatch(methodName, query, body);
+        }
+        catch (Exception e)
+        {
+            response = ServerError(Truncate(e.Message));
+        }
+
+        await SendResponseAsync(context, response);
+    }
+
+    private HgResumeResponse Dispatch(string methodName, IQueryCollection query, byte[] body)
+    {
         switch (methodName)
         {
             case "pushBundleChunk":
-                response = _api.PushBundleChunk(
+                // PHP maps data <- postData (always present from the body); remaining params are required.
+                RequireParams(methodName, query, "repoId", "bundleSize", "offset", "transId");
+                return _api.PushBundleChunk(
                     Str(query, "repoId"),
                     PhpInt(Str(query, "bundleSize")),
                     PhpInt(Str(query, "offset")),
                     body,
                     Str(query, "transId"));
-                break;
 
             case "pullBundleChunk":
-                response = _api.PullBundleChunk(
+                RequireParams(methodName, query, "repoId", "baseHashes", "offset", "chunkSize", "transId");
+                return _api.PullBundleChunk(
                     Str(query, "repoId"),
                     BaseHashes(query),
                     PhpInt(Str(query, "offset")),
                     PhpInt(Str(query, "chunkSize")),
                     Str(query, "transId"));
-                break;
 
             case "getRevisions":
-                response = _api.GetRevisions(
+                RequireParams(methodName, query, "repoId", "offset", "quantity");
+                return _api.GetRevisions(
                     Str(query, "repoId"),
                     PhpInt(Str(query, "offset")),
                     PhpInt(Str(query, "quantity")));
-                break;
 
             case "finishPushBundle":
-                response = _api.FinishPushBundle(Str(query, "transId"));
-                break;
+                RequireParams(methodName, query, "transId");
+                return _api.FinishPushBundle(Str(query, "transId"));
 
             case "finishPullBundle":
-                response = _api.FinishPullBundle(Str(query, "transId"));
-                break;
+                RequireParams(methodName, query, "transId");
+                return _api.FinishPullBundle(Str(query, "transId"));
 
             case "isAvailable":
-                response = _api.IsAvailable();
-                break;
+                return _api.IsAvailable();
 
             default:
-                response = new HgResumeResponse(HgResumeResponse.FAIL,
-                    new Dictionary<string, string> { ["Error"] = $"Unknown method '{methodName}'" },
-                    $"Unknown method '{methodName}'");
-                break;
+                return ServerError($"Unknown method '{methodName}'");
         }
-
-        await SendResponseAsync(context, response);
     }
+
+    /// <summary>
+    /// Mirrors RestServer::buildOrderedParamArray's required-param check. Presence (not non-emptiness)
+    /// is what PHP's array_key_exists tested; empty-but-present values still reach the API.
+    /// </summary>
+    private static void RequireParams(string method, IQueryCollection query, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            bool present = name == "baseHashes"
+                ? HasBaseHashesKey(query)
+                : query.ContainsKey(name);
+            if (!present)
+            {
+                throw new ValidationException($"param {name} is required for method {method}");
+            }
+        }
+    }
+
+    private static bool HasBaseHashesKey(IQueryCollection query)
+    {
+        if (query.ContainsKey("baseHashes[]") || query.ContainsKey("baseHashes")) return true;
+        foreach (var key in query.Keys)
+        {
+            if (key.StartsWith("baseHashes[") && key.EndsWith("]")) return true;
+        }
+        return false;
+    }
+
+    /// <summary>Mirrors RestServer::serverError — FAIL with Error header and body text.</summary>
+    private static HgResumeResponse ServerError(string msg) =>
+        new(HgResumeResponse.FAIL, new Dictionary<string, string> { ["Error"] = msg }, msg);
+
+    private static string Truncate(string s) => s.Length > 1000 ? s.Substring(0, 1000) : s;
 
     private async Task SendResponseAsync(HttpContext context, HgResumeResponse response)
     {

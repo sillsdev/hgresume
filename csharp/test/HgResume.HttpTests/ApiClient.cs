@@ -74,4 +74,8 @@ public sealed class ApiClient
 
     public ApiResponse FinishPullBundle(string transId)
         => Send(HttpMethod.Get, "finishPullBundle", $"?transId={transId}", null);
+
+    /// <summary>Raw GET against a method with an arbitrary query (or none) — for missing-param tests.</summary>
+    public ApiResponse GetRaw(string method, string query)
+        => Send(HttpMethod.Get, method, query, null);
 }

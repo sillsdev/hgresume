@@ -71,4 +71,56 @@ public sealed class MiscFacts
         Assert.Equal("SUCCESS", r.Hgr("status"));
         Assert.Contains("application/octet-stream", r.Headers["content-type"]);
     }
+
+    [Fact]
+    public void FinishPushBundle_MissingTransId_FailWithProtocolHeaders()
+    {
+        // PHP RestServer::buildOrderedParamArray rejected this before the API ran.
+        var r = Api.GetRaw("finishPushBundle", "");
+        Assert.Equal(400, (int)r.Http);
+        Assert.Equal("FAIL", r.Status);
+        Assert.Equal("3", r.Hgr("version"));
+        Assert.Contains("transId", r.Hgr("error"));
+        Assert.Contains("required", r.Hgr("error"));
+    }
+
+    [Fact]
+    public void FinishPushBundle_EmptyTransId_FailWithProtocolHeaders()
+    {
+        // BundleHelper throws ValidationException for empty/non-alphanumeric transId; must not be a bare 500.
+        var r = Api.FinishPushBundle("");
+        Assert.Equal(400, (int)r.Http);
+        Assert.Equal("FAIL", r.Status);
+        Assert.Equal("3", r.Hgr("version"));
+        Assert.False(string.IsNullOrEmpty(r.Hgr("error")));
+    }
+
+    [Fact]
+    public void FinishPullBundle_InvalidTransId_FailWithProtocolHeaders()
+    {
+        var r = Api.FinishPullBundle("bad.id");
+        Assert.Equal(400, (int)r.Http);
+        Assert.Equal("FAIL", r.Status);
+        Assert.Equal("3", r.Hgr("version"));
+        Assert.Contains("alpha numeric", r.Hgr("error"));
+    }
+
+    [Fact]
+    public void UnknownMethod_FailWithProtocolHeaders()
+    {
+        var r = Api.GetRaw("notARealMethod", "");
+        Assert.Equal(400, (int)r.Http);
+        Assert.Equal("FAIL", r.Status);
+        Assert.Contains("Unknown method", r.Hgr("error"));
+    }
+
+    [Fact]
+    public void GetRevisions_MissingRepoId_FailWithProtocolHeaders()
+    {
+        var r = Api.GetRaw("getRevisions", "?offset=0&quantity=50");
+        Assert.Equal(400, (int)r.Http);
+        Assert.Equal("FAIL", r.Status);
+        Assert.Contains("repoId", r.Hgr("error"));
+        Assert.Contains("required", r.Hgr("error"));
+    }
 }
