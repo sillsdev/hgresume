@@ -91,6 +91,11 @@ public sealed class RestDispatcher
 
         if (response.Content.Length > 0)
         {
+            // Set Content-Length explicitly (as the PHP RestServer did). The Chorus client reads the
+            // body with a hand-rolled reader that returns EMPTY when there is no Content-Length header
+            // (it never falls back to chunked/Transfer-Encoding), so relying on Kestrel's default
+            // chunked encoding silently breaks getRevisions and pullBundleChunk for the real client.
+            res.ContentLength = response.Content.Length;
             await res.Body.WriteAsync(response.Content);
         }
     }

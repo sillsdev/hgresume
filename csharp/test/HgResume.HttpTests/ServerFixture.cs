@@ -24,6 +24,12 @@ public sealed class ServerFixture : IAsyncLifetime
     private readonly string _image = Env("HGRESUME_IMAGE", "hgresume-csharp:test");
     private readonly string _port = Env("HGRESUME_PORT", "8034");
     private readonly string _dataDir = Path.Combine(AppContext.BaseDirectory, "data");
+    // Set HGRESUME_REPO_OWNER (e.g. "www-data") to chown seeded repos when the server runs as a
+    // non-root user (the PHP/Apache reference image). Empty = leave ownership as-is (C# runs as root).
+    private readonly string _repoOwner = Env("HGRESUME_REPO_OWNER", "");
+    // Where the server looks for the maintenance file. C# default is under the cache dir; the PHP app
+    // looks in its src dir (SourcePath . "/maintenance_message.txt").
+    private readonly string _maintPath = Env("HGRESUME_MAINT_PATH", "/var/cache/hgresume/maintenance_message.txt");
 
     private bool _startedByUs;
 
@@ -99,8 +105,13 @@ public sealed class ServerFixture : IAsyncLifetime
         if (!File.Exists(localZip)) throw new FileNotFoundException($"fixture not found: {localZip}");
 
         Run(_podman, "cp", localZip, $"{ContainerName}:/tmp/{zipName}");
-        Exec($"rm -rf /var/vcs/public/{repoId} && mkdir -p /var/vcs/public/{repoId} && " +
-             $"cd /var/vcs/public/{repoId} && unzip -oq /tmp/{zipName}");
+        string cmd = $"rm -rf /var/vcs/public/{repoId} && mkdir -p /var/vcs/public/{repoId} && " +
+                     $"cd /var/vcs/public/{repoId} && unzip -oq /tmp/{zipName}";
+        if (!string.IsNullOrEmpty(_repoOwner))
+        {
+            cmd += $" && chown -R {_repoOwner}:{_repoOwner} /var/vcs/public/{repoId}";
+        }
+        Exec(cmd);
         return repoId;
     }
 
@@ -109,16 +120,21 @@ public sealed class ServerFixture : IAsyncLifetime
     /// <summary>Adds and commits a file into the given repo (mirrors the PHP addAndCheckInFile helper).</summary>
     public void AddAndCommit(string repoId, string filename, string content)
     {
-        Exec($"cd /var/vcs/public/{repoId} && printf '%s' '{content}' > {filename} && " +
-             $"hg --config ui.username=system add {filename} && " +
-             $"hg --config ui.username=system commit -m 'added {filename}'");
+        string cmd = $"cd /var/vcs/public/{repoId} && printf '%s' '{content}' > {filename} && " +
+                     $"hg --config ui.username=system add {filename} && " +
+                     $"hg --config ui.username=system commit -m 'added {filename}'";
+        if (!string.IsNullOrEmpty(_repoOwner))
+        {
+            cmd += $" && chown -R {_repoOwner}:{_repoOwner} /var/vcs/public/{repoId}";
+        }
+        Exec(cmd);
     }
 
     public void SetMaintenance(string message)
-        => Exec($"printf '%s' '{message}' > /var/cache/hgresume/maintenance_message.txt");
+        => Exec($"printf '%s' '{message}' > {_maintPath}");
 
     public void ClearMaintenance()
-        => Exec("rm -f /var/cache/hgresume/maintenance_message.txt");
+        => Exec($"rm -f {_maintPath}");
 
     public void Exec(string shellCommand)
         => Run(_podman, "exec", ContainerName, "sh", "-lc", shellCommand);
