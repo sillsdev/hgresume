@@ -1,3 +1,4 @@
+using System.Text;
 using Xunit;
 
 namespace HgResume.HttpTests;
@@ -32,6 +33,28 @@ public sealed class MiscFacts
     {
         _fx.SeedRepo("sampleHgRepo.zip");
         var r = Api.GetRevisions("fakeid", 0, 50);
+        Assert.Equal("UNKNOWNID", r.Status);
+    }
+
+    [Theory]
+    [InlineData("../sampleHgRepo")]
+    [InlineData("..")]
+    [InlineData("foo/bar")]
+    [InlineData("sampleHgRepo/../sampleHgRepo")]
+    public void GetRevisions_PathTraversalRepoId_UnknownCode(string repoId)
+    {
+        // Even when a real repo exists under the search root, path segments must not escape it.
+        _fx.SeedRepo("sampleHgRepo.zip");
+        var r = Api.GetRevisions(repoId, 0, 50);
+        Assert.Equal("UNKNOWNID", r.Status);
+    }
+
+    [Fact]
+    public void PushBundleChunk_PathTraversalRepoId_UnknownCode()
+    {
+        _fx.SeedRepo("sampleHgRepo.zip");
+        var r = Api.PushBundleChunk("../sampleHgRepo", 10000, 0,
+            Encoding.UTF8.GetBytes("chunkData"), nameof(PushBundleChunk_PathTraversalRepoId_UnknownCode));
         Assert.Equal("UNKNOWNID", r.Status);
     }
 

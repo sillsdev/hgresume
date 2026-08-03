@@ -414,18 +414,35 @@ public sealed class HgResumeApi
 
     private string GetRepoPath(string repoId)
     {
-        if (!string.IsNullOrEmpty(repoId))
+        // Client-supplied repoId is joined onto each configured search root. Reject anything that is
+        // not a single path segment (e.g. "../other") so callers cannot escape those roots.
+        if (!IsSafeRepoId(repoId))
         {
-            foreach (var basePath in _config.RepoSearchPaths)
+            return "";
+        }
+
+        foreach (var basePath in _config.RepoSearchPaths)
+        {
+            string possibleRepoPath = Path.Combine(basePath, repoId);
+            if (Directory.Exists(possibleRepoPath))
             {
-                string possibleRepoPath = $"{basePath}/{repoId}";
-                if (Directory.Exists(possibleRepoPath))
-                {
-                    return possibleRepoPath;
-                }
+                return possibleRepoPath;
             }
         }
         return "";
+    }
+
+    /// <summary>
+    /// True only when <paramref name="repoId"/> is a single directory name under a search root.
+    /// Uses Path.GetFileName: if stripping directory parts changes the value, the input had path data.
+    /// </summary>
+    private static bool IsSafeRepoId(string repoId)
+    {
+        if (string.IsNullOrEmpty(repoId) || repoId is "." or "..")
+        {
+            return false;
+        }
+        return Path.GetFileName(repoId) == repoId;
     }
 
     private static HgResumeResponse Fail(string error) =>
