@@ -1,0 +1,10 @@
+# Build context is this directory (`csharp/`); the Dockerfile only COPY src/.
+# Keep the ~20 MB HttpTests fixture tree (and the rest of the harness) out of every build.
+test/
+**/bin/
+**/obj/
+*.md
+*.slnx
+run-tests.sh
+run-tests.ps1
+.gitignore
