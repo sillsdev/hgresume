@@ -40,9 +40,9 @@
          SIL.Chorus.Mercurial package drops its own cross-platform hg (via Mercurial4ChorusDestDir).
          MercurialExtensions\ (the fixutf8 Python extension) is cross-platform and required by Chorus
          on every OS, so it is always staged. -->
-    <Content Include="Mercurial\**" CopyToOutputDirectory="Always"
+    <Content Include="Mercurial/**" CopyToOutputDirectory="Always"
              Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
-    <Content Include="MercurialExtensions\**" CopyToOutputDirectory="Always" />
+    <Content Include="MercurialExtensions/**" CopyToOutputDirectory="Always" />
     <Content Include="test-template-repo.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
