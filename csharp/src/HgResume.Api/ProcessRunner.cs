@@ -10,11 +10,11 @@ namespace HgResume.Api;
 public static class ProcessRunner
 {
     /// <summary>
-    /// Runs a command synchronously (mirrors PHP exec()): returns stdout split into lines with the
-    /// trailing empty line removed, plus the exit code. stderr is discarded (PHP exec captured stdout).
+    /// Runs a command (mirrors PHP exec()): returns stdout split into lines with the trailing empty
+    /// line removed, plus the exit code. stderr is discarded (PHP exec captured stdout).
     /// </summary>
-    public static (List<string> Lines, int ExitCode) RunSync(string workingDir, string program,
-        params string[] args)
+    public static async Task<(List<string> Lines, int ExitCode)> RunAsync(string workingDir,
+        string program, string[] args, CancellationToken ct = default)
     {
         var psi = new ProcessStartInfo
         {
@@ -29,11 +29,11 @@ public static class ProcessRunner
         using var proc = Process.Start(psi)
                          ?? throw new HgException($"failed to start process '{program}'");
         // Read both streams to avoid pipe-buffer deadlock.
-        var stdoutTask = proc.StandardOutput.ReadToEndAsync();
-        var stderrTask = proc.StandardError.ReadToEndAsync();
-        proc.WaitForExit();
-        string stdout = stdoutTask.GetAwaiter().GetResult();
-        _ = stderrTask.GetAwaiter().GetResult();
+        var stdoutTask = proc.StandardOutput.ReadToEndAsync(ct);
+        var stderrTask = proc.StandardError.ReadToEndAsync(ct);
+        await Task.WhenAll(stdoutTask, stderrTask);
+        await proc.WaitForExitAsync(ct);
+        string stdout = stdoutTask.Result;
 
         var lines = stdout.Replace("\r\n", "\n").Split('\n').ToList();
         // PHP exec() drops the trailing newline / empty final element.

@@ -18,9 +18,10 @@ public sealed class HgResumeApi
 
     // ---- push -----------------------------------------------------------------------------------
 
-    public HgResumeResponse PushBundleChunk(string repoId, int bundleSize, int offset, byte[] data, string transId)
+    public async Task<HgResumeResponse> PushBundleChunkAsync(string repoId, int bundleSize, int offset,
+        byte[] data, string transId, CancellationToken ct = default)
     {
-        var availability = IsAvailable();
+        var availability = await IsAvailableAsync(ct);
         if (availability.Code == HgResumeResponse.NOTAVAILABLE)
         {
             return availability;
@@ -80,9 +81,10 @@ public sealed class HgResumeApi
                 }
 
                 // write chunk data to bundle file (chunks arrive in order so offset == current length)
-                using (var fs = new FileStream(bundle.BundleFileName, FileMode.Append, FileAccess.Write))
+                await using (var fs = new FileStream(bundle.BundleFileName, FileMode.Append,
+                    FileAccess.Write, FileShare.None, bufferSize: 4096, FileOptions.Asynchronous))
                 {
-                    fs.Write(data, 0, data.Length);
+                    await fs.WriteAsync(data, ct);
                 }
 
                 int newSow = offset + dataSize;
@@ -102,13 +104,14 @@ public sealed class HgResumeApi
 
             case BundleHelper.State_Validating:
             case BundleHelper.State_Unbundle:
-                return CompletePushBundle(bundle, hg, transId, bundleSize);
+                return await CompletePushBundleAsync(bundle, hg, transId, bundleSize, ct);
         }
 
         return new HgResumeResponse(HgResumeResponse.FAIL); // unreachable, mirrors PHP returning null
     }
 
-    private HgResumeResponse CompletePushBundle(BundleHelper bundle, HgRunner hg, string transId, int bundleSize)
+    private async Task<HgResumeResponse> CompletePushBundleAsync(BundleHelper bundle, HgRunner hg,
+        string transId, int bundleSize, CancellationToken ct)
     {
         try
         {
@@ -121,7 +124,7 @@ public sealed class HgResumeApi
                     goto case BundleHelper.State_Validating;
 
                 case BundleHelper.State_Validating:
-                    if (hg.FinishValidating(bundleFilePath))
+                    if (await hg.FinishValidatingAsync(bundleFilePath, ct))
                     {
                         bundle.State = BundleHelper.State_Unbundle;
                         hg.Unbundle(bundleFilePath);
@@ -131,9 +134,9 @@ public sealed class HgResumeApi
 
                 case BundleHelper.State_Unbundle:
                     var asyncRunner = new AsyncRunner(bundleFilePath);
-                    if (asyncRunner.WaitForIsComplete())
+                    if (await asyncRunner.WaitForIsCompleteAsync(ct))
                     {
-                        if (BundleHelper.BundleOutputHasErrors(asyncRunner.GetOutput()))
+                        if (BundleHelper.BundleOutputHasErrors(await asyncRunner.GetOutputAsync(ct)))
                         {
                             return new HgResumeResponse(HgResumeResponse.RESET, new Dictionary<string, string>
                             {
@@ -150,6 +153,12 @@ public sealed class HgResumeApi
                     return HgResumeResponse.PendingResponse(transId, "Unpacking in progress...", bundleSize);
             }
             return new HgResumeResponse(HgResumeResponse.FAIL);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Client disconnected: don't reset the transaction's offset or fabricate an error
+            // response — let the aborted request unwind so the resumable state stays intact.
+            throw;
         }
         catch (UnrelatedRepoException e)
         {
@@ -173,16 +182,17 @@ public sealed class HgResumeApi
 
     // ---- pull -----------------------------------------------------------------------------------
 
-    public HgResumeResponse PullBundleChunk(string repoId, IReadOnlyList<string> baseHashes, int offset,
-        int chunkSize, string transId)
-        => PullBundleChunkInternal(repoId, baseHashes, offset, chunkSize, transId, false);
+    public Task<HgResumeResponse> PullBundleChunkAsync(string repoId, IReadOnlyList<string> baseHashes,
+        int offset, int chunkSize, string transId, CancellationToken ct = default)
+        => PullBundleChunkInternalAsync(repoId, baseHashes, offset, chunkSize, transId, false, ct);
 
-    public HgResumeResponse PullBundleChunkInternal(string repoId, IReadOnlyList<string> baseHashes, int offset,
-        int chunkSize, string transId, bool waitForBundleToFinish)
+    public async Task<HgResumeResponse> PullBundleChunkInternalAsync(string repoId,
+        IReadOnlyList<string> baseHashes, int offset, int chunkSize, string transId,
+        bool waitForBundleToFinish, CancellationToken ct = default)
     {
         try
         {
-            var availability = IsAvailable();
+            var availability = await IsAvailableAsync(ct);
             if (availability.Code == HgResumeResponse.NOTAVAILABLE)
             {
                 return availability;
@@ -199,14 +209,14 @@ public sealed class HgResumeApi
             }
 
             var hg = new HgRunner(repoPath);
-            if (!hg.IsValidBase(baseHashes))
+            if (!await hg.IsValidBaseAsync(baseHashes, ct))
             {
                 return Fail("invalid baseHash");
             }
 
             // If every requested baseHash is a branch tip then no pull is necessary
             var sortedBase = baseHashes.OrderBy(h => h, StringComparer.Ordinal).ToList();
-            var branchTips = hg.GetBranchTips();
+            var branchTips = await hg.GetBranchTipsAsync(ct);
             branchTips.Sort(StringComparer.Ordinal);
             if (branchTips.Count == 0)
             {
@@ -240,9 +250,9 @@ public sealed class HgResumeApi
                 }
                 // first pull request (offset == 0): make a new bundle
                 asyncRunner = waitForBundleToFinish
-                    ? hg.MakeBundleAndWaitUntilFinished(sortedBase, bundleFilename)
+                    ? await hg.MakeBundleAndWaitUntilFinishedAsync(sortedBase, bundleFilename, ct)
                     : hg.MakeBundle(sortedBase, bundleFilename);
-                bundle.SetProp("tip", hg.GetTip());
+                bundle.SetProp("tip", await hg.GetTipAsync(ct));
                 bundle.SetProp("repoId", repoId);
                 bundle.State = BundleHelper.State_Bundle;
             }
@@ -251,13 +261,14 @@ public sealed class HgResumeApi
             switch (bundle.State)
             {
                 case BundleHelper.State_Bundle:
-                    if (asyncRunner.IsComplete())
+                    if (await asyncRunner.IsCompleteAsync(ct))
                     {
-                        if (BundleHelper.BundleOutputHasErrors(asyncRunner.GetOutput()))
+                        string bundleOutput = await asyncRunner.GetOutputAsync(ct);
+                        if (BundleHelper.BundleOutputHasErrors(bundleOutput))
                         {
                             return new HgResumeResponse(HgResumeResponse.FAIL, new Dictionary<string, string>
                             {
-                                ["Error"] = Truncate(asyncRunner.GetOutput()),
+                                ["Error"] = Truncate(bundleOutput),
                             });
                         }
                         bundle.State = BundleHelper.State_Downloading;
@@ -266,7 +277,7 @@ public sealed class HgResumeApi
                     {
                         if (CanGetChunkBelowBundleSize(bundleFilename, chunkSize, offset))
                         {
-                            byte[] data = GetChunk(bundleFilename, chunkSize, offset);
+                            byte[] data = await GetChunkAsync(bundleFilename, chunkSize, offset, ct);
                             response.Values = new Dictionary<string, string>
                             {
                                 ["bundleSize"] = new FileInfo(bundleFilename).Length.ToString(),
@@ -276,13 +287,13 @@ public sealed class HgResumeApi
                             response.Content = data;
                             return response; // break out of loop and switch (PHP: break 2)
                         }
-                        Thread.Sleep(2000);
+                        await Task.Delay(2000, ct);
                     }
                     response = new HgResumeResponse(HgResumeResponse.INPROGRESS);
                     break;
 
                 case BundleHelper.State_Downloading:
-                    byte[] chunk = GetChunk(bundleFilename, chunkSize, offset);
+                    byte[] chunk = await GetChunkAsync(bundleFilename, chunkSize, offset, ct);
                     long size = new FileInfo(bundleFilename).Length;
                     response.Values = new Dictionary<string, string>
                     {
@@ -301,6 +312,11 @@ public sealed class HgResumeApi
 
             return response;
         }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Client disconnected: let the abort unwind rather than mapping it to a bogus FAIL.
+            throw;
+        }
         catch (Exception e)
         {
             return Fail(Truncate(e.Message));
@@ -313,21 +329,23 @@ public sealed class HgResumeApi
         return fi.Exists && offset + chunkSize < fi.Length;
     }
 
-    private static byte[] GetChunk(string filename, int chunkSize, int offset)
+    private static async Task<byte[]> GetChunkAsync(string filename, int chunkSize, int offset,
+        CancellationToken ct)
     {
         var fi = new FileInfo(filename);
         if (!fi.Exists || offset >= fi.Length)
         {
             return Array.Empty<byte>();
         }
-        using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        await using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
+            bufferSize: 4096, FileOptions.Asynchronous);
         fs.Seek(offset, SeekOrigin.Begin);
         int toRead = (int)Math.Min(chunkSize, fs.Length - offset);
         var buffer = new byte[toRead];
         int read = 0;
         while (read < toRead)
         {
-            int n = fs.Read(buffer, read, toRead - read);
+            int n = await fs.ReadAsync(buffer.AsMemory(read, toRead - read), ct);
             if (n == 0) break;
             read += n;
         }
@@ -337,9 +355,10 @@ public sealed class HgResumeApi
 
     // ---- misc -----------------------------------------------------------------------------------
 
-    public HgResumeResponse GetRevisions(string repoId, int offset, int quantity)
+    public async Task<HgResumeResponse> GetRevisionsAsync(string repoId, int offset, int quantity,
+        CancellationToken ct = default)
     {
-        var availability = IsAvailable();
+        var availability = await IsAvailableAsync(ct);
         if (availability.Code == HgResumeResponse.NOTAVAILABLE)
         {
             return availability;
@@ -352,9 +371,13 @@ public sealed class HgResumeApi
                 return new HgResumeResponse(HgResumeResponse.UNKNOWNID);
             }
             var hg = new HgRunner(repoPath);
-            var revisionList = hg.GetRevisions(offset, quantity);
+            var revisionList = await hg.GetRevisionsAsync(offset, quantity, ct);
             return new HgResumeResponse(HgResumeResponse.SUCCESS, new Dictionary<string, string>(),
                 string.Join("|", revisionList));
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception e)
         {
@@ -362,15 +385,15 @@ public sealed class HgResumeApi
         }
     }
 
-    public HgResumeResponse FinishPushBundle(string transId)
+    public Task<HgResumeResponse> FinishPushBundleAsync(string transId)
     {
         var bundle = new BundleHelper(_config, transId);
-        return bundle.CleanUp()
+        return Task.FromResult(bundle.CleanUp()
             ? new HgResumeResponse(HgResumeResponse.SUCCESS)
-            : new HgResumeResponse(HgResumeResponse.FAIL);
+            : new HgResumeResponse(HgResumeResponse.FAIL));
     }
 
-    public HgResumeResponse FinishPullBundle(string transId)
+    public async Task<HgResumeResponse> FinishPullBundleAsync(string transId, CancellationToken ct = default)
     {
         var bundle = new BundleHelper(_config, transId);
         if (bundle.HasProp("tip") && bundle.HasProp("repoId"))
@@ -380,7 +403,7 @@ public sealed class HgResumeApi
             {
                 var hg = new HgRunner(repoPath);
                 // check that the repo has not been updated since the pull started
-                if (bundle.GetProp("tip") != hg.GetTip())
+                if (bundle.GetProp("tip") != await hg.GetTipAsync(ct))
                 {
                     bundle.CleanUp();
                     return new HgResumeResponse(HgResumeResponse.RESET);
@@ -392,13 +415,13 @@ public sealed class HgResumeApi
             : new HgResumeResponse(HgResumeResponse.FAIL);
     }
 
-    public HgResumeResponse IsAvailable()
+    public async Task<HgResumeResponse> IsAvailableAsync(CancellationToken ct = default)
     {
         if (IsAvailableAsBool())
         {
             return new HgResumeResponse(HgResumeResponse.SUCCESS);
         }
-        string message = File.ReadAllText(_config.MaintenanceFilePath, Encoding.UTF8);
+        string message = await File.ReadAllTextAsync(_config.MaintenanceFilePath, Encoding.UTF8, ct);
         return new HgResumeResponse(HgResumeResponse.NOTAVAILABLE, new Dictionary<string, string>(), message);
     }
 

@@ -21,8 +21,9 @@ public sealed class RestDispatcher
 
     public async Task HandleAsync(HttpContext context)
     {
+        var ct = context.RequestAborted;
         string methodName = LastPathSegment(context.Request.Path.Value ?? "");
-        byte[] body = await ReadBodyAsync(context.Request);
+        byte[] body = await ReadBodyAsync(context.Request, ct);
         var query = context.Request.Query;
 
         // Always answer with the X-HgR-* contract. PHP RestServer::serverError did the same for
@@ -31,59 +32,68 @@ public sealed class RestDispatcher
         HgResumeResponse response;
         try
         {
-            response = Dispatch(methodName, query, body);
+            response = await DispatchAsync(methodName, query, body, ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            // Client went away — no point building or sending an X-HgR-* response.
+            return;
         }
         catch (Exception e)
         {
             response = ServerError(Truncate(e.Message));
         }
 
-        await SendResponseAsync(context, response);
+        await SendResponseAsync(context, response, ct);
     }
 
-    private HgResumeResponse Dispatch(string methodName, IQueryCollection query, byte[] body)
+    private Task<HgResumeResponse> DispatchAsync(string methodName, IQueryCollection query, byte[] body,
+        CancellationToken ct)
     {
         switch (methodName)
         {
             case "pushBundleChunk":
                 // PHP maps data <- postData (always present from the body); remaining params are required.
                 RequireParams(methodName, query, "repoId", "bundleSize", "offset", "transId");
-                return _api.PushBundleChunk(
+                return _api.PushBundleChunkAsync(
                     Str(query, "repoId"),
                     PhpInt(Str(query, "bundleSize")),
                     PhpInt(Str(query, "offset")),
                     body,
-                    Str(query, "transId"));
+                    Str(query, "transId"),
+                    ct);
 
             case "pullBundleChunk":
                 RequireParams(methodName, query, "repoId", "baseHashes", "offset", "chunkSize", "transId");
-                return _api.PullBundleChunk(
+                return _api.PullBundleChunkAsync(
                     Str(query, "repoId"),
                     BaseHashes(query),
                     PhpInt(Str(query, "offset")),
                     PhpInt(Str(query, "chunkSize")),
-                    Str(query, "transId"));
+                    Str(query, "transId"),
+                    ct);
 
             case "getRevisions":
                 RequireParams(methodName, query, "repoId", "offset", "quantity");
-                return _api.GetRevisions(
+                return _api.GetRevisionsAsync(
                     Str(query, "repoId"),
                     PhpInt(Str(query, "offset")),
-                    PhpInt(Str(query, "quantity")));
+                    PhpInt(Str(query, "quantity")),
+                    ct);
 
             case "finishPushBundle":
                 RequireParams(methodName, query, "transId");
-                return _api.FinishPushBundle(Str(query, "transId"));
+                return _api.FinishPushBundleAsync(Str(query, "transId"));
 
             case "finishPullBundle":
                 RequireParams(methodName, query, "transId");
-                return _api.FinishPullBundle(Str(query, "transId"));
+                return _api.FinishPullBundleAsync(Str(query, "transId"), ct);
 
             case "isAvailable":
-                return _api.IsAvailable();
+                return _api.IsAvailableAsync(ct);
 
             default:
-                return ServerError($"Unknown method '{methodName}'");
+                return Task.FromResult(ServerError($"Unknown method '{methodName}'"));
         }
     }
 
@@ -121,7 +131,7 @@ public sealed class RestDispatcher
 
     private static string Truncate(string s) => s.Length > 1000 ? s.Substring(0, 1000) : s;
 
-    private async Task SendResponseAsync(HttpContext context, HgResumeResponse response)
+    private async Task SendResponseAsync(HttpContext context, HgResumeResponse response, CancellationToken ct)
     {
         var (httpCode, hgrStatus) = MapHgResponse(response.Code);
 
@@ -142,7 +152,7 @@ public sealed class RestDispatcher
             // (it never falls back to chunked/Transfer-Encoding), so relying on Kestrel's default
             // chunked encoding silently breaks getRevisions and pullBundleChunk for the real client.
             res.ContentLength = response.Content.Length;
-            await res.Body.WriteAsync(response.Content);
+            await res.Body.WriteAsync(response.Content, ct);
         }
     }
 
@@ -168,10 +178,10 @@ public sealed class RestDispatcher
         return segments.Length == 0 ? "" : segments[^1];
     }
 
-    private static async Task<byte[]> ReadBodyAsync(HttpRequest request)
+    private static async Task<byte[]> ReadBodyAsync(HttpRequest request, CancellationToken ct)
     {
         using var ms = new MemoryStream();
-        await request.Body.CopyToAsync(ms);
+        await request.Body.CopyToAsync(ms, ct);
         return ms.ToArray();
     }
 

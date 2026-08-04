@@ -70,12 +70,15 @@ public sealed class AsyncRunner
                     sb.Append($"\nCommand exited with non-zero status {proc.ExitCode}\n");
                 }
                 sb.Append($"\n{CompletedMarker}: done\n");
-                File.WriteAllText(lockFile, sb.ToString());
+                // CancellationToken.None: this background write must survive the originating request.
+                await File.WriteAllTextAsync(lockFile, sb.ToString(), CancellationToken.None).ConfigureAwait(false);
             }
             catch (Exception e)
             {
                 // Ensure a completion marker is always written so pollers do not hang forever.
-                File.WriteAllText(lockFile, $"AsyncRunner error: {e.Message}\n{CompletedMarker}: error\n");
+                await File.WriteAllTextAsync(lockFile,
+                    $"AsyncRunner error: {e.Message}\n{CompletedMarker}: error\n", CancellationToken.None)
+                    .ConfigureAwait(false);
             }
             finally
             {
@@ -95,22 +98,22 @@ public sealed class AsyncRunner
 
     public bool IsRunning() => File.Exists(_lockFile);
 
-    public bool IsComplete()
+    public async Task<bool> IsCompleteAsync(CancellationToken ct = default)
     {
         if (!File.Exists(_lockFile))
         {
             throw new AsyncRunnerException($"Lock file '{_lockFile}' not found, process is not running");
         }
-        return ReadLockFile().Contains(CompletedMarker);
+        return (await ReadLockFileAsync(ct)).Contains(CompletedMarker);
     }
 
-    public string GetOutput()
+    public async Task<string> GetOutputAsync(CancellationToken ct = default)
     {
-        if (!IsComplete())
+        if (!await IsCompleteAsync(ct))
         {
             throw new AsyncRunnerException($"Command on '{_lockFile}' not yet complete.");
         }
-        return ReadLockFile();
+        return await ReadLockFileAsync(ct);
     }
 
     public void CleanUp()
@@ -119,21 +122,22 @@ public sealed class AsyncRunner
     }
 
     /// <summary>Waits up to ~5s for the runner to complete. Mirrors PHP waitForIsComplete().</summary>
-    public bool WaitForIsComplete()
+    public async Task<bool> WaitForIsCompleteAsync(CancellationToken ct = default)
     {
         for (int i = 0; i < 5; i++)
         {
-            if (IsComplete()) return true;
-            Thread.Sleep(1000);
+            if (await IsCompleteAsync(ct)) return true;
+            await Task.Delay(1000, ct);
         }
         return false;
     }
 
-    private string ReadLockFile()
+    private async Task<string> ReadLockFileAsync(CancellationToken ct = default)
     {
         // Share read/write so we never contend with the background writer.
-        using var fs = new FileStream(_lockFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        await using var fs = new FileStream(_lockFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
+            bufferSize: 4096, FileOptions.Asynchronous);
         using var reader = new StreamReader(fs, Encoding.UTF8);
-        return reader.ReadToEnd();
+        return await reader.ReadToEndAsync(ct);
     }
 }

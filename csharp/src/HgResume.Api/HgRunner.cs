@@ -37,12 +37,12 @@ public sealed class HgRunner
     }
 
     /// <returns>true if validation finished, otherwise false (still running)</returns>
-    public bool FinishValidating(string filepath)
+    public async Task<bool> FinishValidatingAsync(string filepath, CancellationToken ct = default)
     {
         var asyncRunner = GetValidationRunner(filepath);
-        if (asyncRunner.WaitForIsComplete())
+        if (await asyncRunner.WaitForIsCompleteAsync(ct))
         {
-            string output = asyncRunner.GetOutput();
+            string output = await asyncRunner.GetOutputAsync(ct);
             if (UnknownParent.IsMatch(output))
             {
                 throw new UnrelatedRepoException("Project is unrelated!  (unrelated bundle pushed to repo)");
@@ -114,10 +114,11 @@ public sealed class HgRunner
         return asyncRunner;
     }
 
-    public AsyncRunner MakeBundleAndWaitUntilFinished(IReadOnlyList<string> baseHashes, string bundleFilePath)
+    public async Task<AsyncRunner> MakeBundleAndWaitUntilFinishedAsync(IReadOnlyList<string> baseHashes,
+        string bundleFilePath, CancellationToken ct = default)
     {
         var asyncRunner = MakeBundle(baseHashes, bundleFilePath);
-        if (!asyncRunner.WaitForIsComplete())
+        if (!await asyncRunner.WaitForIsCompleteAsync(ct))
         {
             throw new HgException("Error: make bundle failed to complete");
         }
@@ -127,17 +128,17 @@ public sealed class HgRunner
     // ---- revision inspection --------------------------------------------------------------------
 
     /// <returns>a baseHash (without branch information)</returns>
-    public string GetTip()
+    public async Task<string> GetTipAsync(CancellationToken ct = default)
     {
-        var revisionArray = GetRevisions(0, 1);
+        var revisionArray = await GetRevisionsAsync(0, 1, ct);
         string first = revisionArray[0];
         int colon = first.IndexOf(':');
         return colon >= 0 ? first.Substring(0, colon) : first;
     }
 
-    public List<string> GetBranchTips()
+    public async Task<List<string>> GetBranchTipsAsync(CancellationToken ct = default)
     {
-        var (branches, _) = ProcessRunner.RunSync(RepoPath, "hg", "branches");
+        var (branches, _) = await ProcessRunner.RunAsync(RepoPath, "hg", ["branches"], ct);
         var revisionArray = new List<string>();
         foreach (var branch in branches)
         {
@@ -151,7 +152,7 @@ public sealed class HgRunner
                 int space = branch.IndexOf(' ');
                 branchName = space >= 0 ? branch.Substring(0, space) : branch;
             }
-            revisionArray.AddRange(GetRevisionsInternal(0, 1, branchName));
+            revisionArray.AddRange(await GetRevisionsInternalAsync(0, 1, branchName, ct));
         }
         var revisions = new List<string>();
         foreach (var hashAndBranch in revisionArray)
@@ -163,9 +164,11 @@ public sealed class HgRunner
     }
 
     /// <summary>Returns "hash:branch" pairs, e.g. 'fb7a8f23394d:default'.</summary>
-    public List<string> GetRevisions(int offset, int quantity) => GetRevisionsInternal(offset, quantity, null);
+    public Task<List<string>> GetRevisionsAsync(int offset, int quantity, CancellationToken ct = default)
+        => GetRevisionsInternalAsync(offset, quantity, null, ct);
 
-    private List<string> GetRevisionsInternal(int offset, int quantity, string? branch)
+    private async Task<List<string>> GetRevisionsInternalAsync(int offset, int quantity, string? branch,
+        CancellationToken ct = default)
     {
         if (quantity < 1)
         {
@@ -176,10 +179,11 @@ public sealed class HgRunner
             ? new[] { "log", "--template", "{node|short}:{branches}\n" }
             : new[] { "log", "-b", branch, "--template", "{node|short}:{branches}\n" };
 
-        var (output, _) = ProcessRunner.RunSync(RepoPath, "hg", args);
+        var (output, _) = await ProcessRunner.RunAsync(RepoPath, "hg", args, ct);
         if (output.Count == 0)
         {
-            var (tip, _) = ProcessRunner.RunSync(RepoPath, "hg", "tip", "--template", "{rev}:{branches}\n");
+            var (tip, _) = await ProcessRunner.RunAsync(RepoPath, "hg",
+                ["tip", "--template", "{rev}:{branches}\n"], ct);
             if (tip.Count == 1 && tip[0].StartsWith("-1"))
             {
                 // Empty repo (hg init, zero changesets). At offset 0 we emit '0:<branch>' (from
@@ -198,7 +202,7 @@ public sealed class HgRunner
         return output.Skip(offset).Take(quantity).ToList();
     }
 
-    public bool IsValidBase(IReadOnlyList<string> hashes)
+    public async Task<bool> IsValidBaseAsync(IReadOnlyList<string> hashes, CancellationToken ct = default)
     {
         if (hashes.Count == 1 && hashes[0] == "0")
         {
@@ -209,7 +213,7 @@ public sealed class HgRunner
         int i = 0;
         while (foundHash < hashes.Count)
         {
-            var revisions = GetRevisions(i, q);
+            var revisions = await GetRevisionsAsync(i, q, ct);
             if (revisions.Count == 0)
             {
                 return false; // paged past the last revision without matching every hash
