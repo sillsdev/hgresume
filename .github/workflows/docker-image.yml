@@ -30,8 +30,11 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
 
-      - name: Set Version
-        run: echo "VERSION=v$(date --rfc-3339=date)" >> "${GITHUB_ENV}"
+      # A step output, not an env var: a job-wide `VERSION` env var is imported by MSBuild as the
+      # $(Version) property and breaks `dotnet test` ('v<date>' is not a valid version string).
+      - name: Set version tag
+        id: version
+        run: echo "value=v$(date --rfc-3339=date)" >> "${GITHUB_OUTPUT}"
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -43,7 +46,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=pr
-            type=raw,value=${{ env.VERSION }},enable=${{ github.event_name != 'pull_request' }}
+            type=raw,value=${{ steps.version.outputs.value }},enable=${{ github.event_name != 'pull_request' }}
 
       # Build the amd64 image and load it into the local Docker daemon so the test fixtures can run it
       # as a container (a multi-arch image can't be loaded/run directly). The multi-arch push step below
