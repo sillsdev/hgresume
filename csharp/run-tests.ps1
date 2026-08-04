@@ -14,6 +14,9 @@ try {
     if (-not $SkipBuild) {
         Write-Host "==> Building image $Image" -ForegroundColor Cyan
         podman build -t $Image -f Dockerfile .
+        if ($LASTEXITCODE -ne 0) {
+            throw "podman build failed with exit code $LASTEXITCODE"
+        }
     }
 
     $env:HGRESUME_IMAGE = $Image
@@ -22,6 +25,9 @@ try {
 
     Write-Host "==> Running HTTP-level tests against the image" -ForegroundColor Cyan
     dotnet test test/HgResume.HttpTests/HgResume.HttpTests.csproj --logger "console;verbosity=normal"
+    if ($LASTEXITCODE -ne 0) {
+        throw "dotnet test failed with exit code $LASTEXITCODE"
+    }
 }
 finally {
     Pop-Location

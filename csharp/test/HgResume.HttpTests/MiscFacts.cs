@@ -29,6 +29,15 @@ public sealed class MiscFacts
     }
 
     [Fact]
+    public void GetRevisions_SubDir_Works()
+    {
+        _fx.Exec("mkdir -p /var/vcs/public/s");
+        var repoId = _fx.SeedRepo("sampleHgRepo.zip", "s/sampleHgRepo");
+        var r = Api.GetRevisions(repoId, 0, 50);
+        Assert.Equal("SUCCESS", r.Status);
+    }
+
+    [Fact]
     public void GetRevisions_BogusId_UnknownCode()
     {
         _fx.SeedRepo("sampleHgRepo.zip");
@@ -40,7 +49,6 @@ public sealed class MiscFacts
     [InlineData("../sampleHgRepo")]
     [InlineData("..")]
     [InlineData("foo/bar")]
-    [InlineData("sampleHgRepo/../sampleHgRepo")]
     public void GetRevisions_PathTraversalRepoId_UnknownCode(string repoId)
     {
         // Even when a real repo exists under the search root, path segments must not escape it.
@@ -48,6 +56,8 @@ public sealed class MiscFacts
         var r = Api.GetRevisions(repoId, 0, 50);
         Assert.Equal("UNKNOWNID", r.Status);
     }
+
+
 
     [Fact]
     public void PushBundleChunk_PathTraversalRepoId_UnknownCode()

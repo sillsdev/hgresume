@@ -98,9 +98,9 @@ public sealed class ServerFixture : IAsyncLifetime
     // ---- repo/maintenance seeding ---------------------------------------------------------------
 
     /// <summary>Extracts a fixture repo zip on the host into /var/vcs/public/&lt;repoId&gt;. Returns the repoId.</summary>
-    public string SeedRepo(string zipName)
+    public string SeedRepo(string zipName, string? repoId = null)
     {
-        string repoId = Path.GetFileNameWithoutExtension(zipName);
+        repoId ??= Path.GetFileNameWithoutExtension(zipName);
         string localZip = Path.Combine(_dataDir, zipName);
         if (!File.Exists(localZip)) throw new FileNotFoundException($"fixture not found: {localZip}");
 

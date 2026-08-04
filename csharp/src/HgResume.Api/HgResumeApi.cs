@@ -423,8 +423,10 @@ public sealed class HgResumeApi
 
         foreach (var basePath in _config.RepoSearchPaths)
         {
-            string possibleRepoPath = Path.Combine(basePath, repoId);
-            if (Directory.Exists(possibleRepoPath))
+            var fullBasePath = Path.GetFullPath(basePath);
+            var possibleRepoPath = Path.Combine(fullBasePath, repoId);
+
+            if (possibleRepoPath.StartsWith(fullBasePath) && Directory.Exists(possibleRepoPath))
             {
                 return possibleRepoPath;
             }
@@ -442,7 +444,8 @@ public sealed class HgResumeApi
         {
             return false;
         }
-        return Path.GetFileName(repoId) == repoId;
+
+        return true;
     }
 
     private static HgResumeResponse Fail(string error) =>
