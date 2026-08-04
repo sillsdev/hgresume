@@ -185,6 +185,29 @@ public sealed class PullFacts
     }
 
     [Fact]
+    public async Task PullBundleChunk_NonEmptyRepoMissingHashAcrossPages_FailsWithoutHanging()
+    {
+        // manyRevsHgRepo has 205 revisions, more than IsValidBase's page size (q = 200). A baseHash that
+        // does not exist forces the pagination loop past the first full page (offset 0 -> 200) and onto a
+        // short final page, exercising the offset-advancement + short-page-break branch that the
+        // single-page PullBundleChunk_InvalidHash_FailCode test never reaches. It must terminate with FAIL
+        // rather than paging forever.
+        _fx.SeedRepo("manyRevsHgRepo.zip");
+        string tx = nameof(PullBundleChunk_NonEmptyRepoMissingHashAcrossPages_FailsWithoutHanging);
+        Api.FinishPullBundle(tx);
+
+        // Guard with a timeout so a non-terminating loop surfaces as a fast, clear failure.
+        var call = Task.Run(() => Api.PullBundleChunk("manyRevsHgRepo", new[] { "ffffffffffff" }, 0, 50, tx));
+        var finished = await Task.WhenAny(call, Task.Delay(TimeSpan.FromSeconds(30)));
+        Assert.True(finished == call,
+            "PullBundleChunk against a >200-revision repo with a missing baseHash did not return within 30s — " +
+            "IsValidBase pagination is not terminating.");
+
+        var r = await call;
+        Assert.Equal("FAIL", r.Status);
+    }
+
+    [Fact]
     public void PullBundleChunk_LongMakeBundle_InProgressCode()
     {
         _fx.SeedRepo("sampleLargeBundleHgRepo.zip");
