@@ -86,7 +86,10 @@ public sealed class PullFacts
         var first = Protocol.PullFirstChunk(Api, "sampleHgRepo2", new[] { hash }, 0, 50, tx);
         Assert.Equal("SUCCESS", first.Status);
         int bundleSize = first.HgrInt("bundleSize");
-        var r = Api.PullBundleChunk("sampleHgRepo2", new[] { hash }, bundleSize, 1000, tx);
+        // At offset == bundleSize the response is SUCCESS only once the transaction has flipped from the
+        // Bundle to the Downloading state; until then the server returns INPROGRESS (as the real client
+        // polls through). Poll rather than asserting SUCCESS on the first request, which is timing-flaky.
+        var r = Protocol.PullFirstChunk(Api, "sampleHgRepo2", new[] { hash }, bundleSize, 1000, tx);
         Assert.Equal("SUCCESS", r.Status);
         Assert.Equal(0, r.HgrInt("chunkSize"));
         Assert.Empty(r.Content);
