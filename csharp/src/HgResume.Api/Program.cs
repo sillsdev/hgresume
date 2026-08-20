@@ -1,4 +1,7 @@
+using System.Text.Json.Serialization;
 using HgResume.Api;
+using HgResume.Api.Manage;
+using HgResume.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 var config = ApiConfig.FromEnvironment();
@@ -10,13 +13,30 @@ builder.WebHost.ConfigureKestrel(options =>
     options.Limits.MaxRequestBodySize = config.MaxRequestBodySize;
 });
 
+builder.Services.AddSingleton(config);
+builder.Services.AddSingleton<HgResumeApi>();
+builder.Services.AddSingleton<RestDispatcher>();
+builder.Services.AddSingleton<RepoManageService>();
+builder.Services.AddSingleton<IRepoManageService>(sp => sp.GetRequiredService<RepoManageService>());
+builder.Services.AddHostedService(sp => sp.GetRequiredService<RepoManageService>());
+builder.Services.AddExceptionHandler<ApiExceptionHandler>();
+builder.Services.AddProblemDetails();
+builder.Services.AddValidation();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 var app = builder.Build();
 
-var api = new HgResumeApi(config);
-var dispatcher = new RestDispatcher(config, api);
+app.UseExceptionHandler();
+app.UseStatusCodePages();
 
-// Every request (any method, any path) is dispatched on its last path segment, so /api/v03/<method>
-// keeps working exactly as the PHP app did. Auth is handled by the surrounding platform.
-app.Run(dispatcher.HandleAsync);
+app.MapManageRepos();
+app.Map("/api/manage/{**rest}", () => TypedResults.NotFound());
+
+var dispatcher = app.Services.GetRequiredService<RestDispatcher>();
+// Resume protocol is prefix-agnostic (/api/v03/<method>). Manage routes above take precedence.
+app.MapFallback(dispatcher.HandleAsync);
 
 app.Run();
+
+public partial class Program;

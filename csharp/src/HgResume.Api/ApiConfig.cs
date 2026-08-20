@@ -23,6 +23,12 @@ public sealed class ApiConfig
     /// </summary>
     public required long MaxRequestBodySize { get; init; }
 
+    /// <summary>
+    /// Age after which reset backups in <c>_____deleted_____</c> are removed. LexBox default is 31;
+    /// cleanup still enforces a 5-day minimum.
+    /// </summary>
+    public required int ResetCleanupAgeDays { get; init; }
+
     public static ApiConfig FromEnvironment()
     {
         string cache = Env("HGRESUME_CACHE_PATH", "/var/cache/hgresume");
@@ -36,6 +42,7 @@ public sealed class ApiConfig
                 .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries),
             MaintenanceFilePath = maintenance,
             MaxRequestBodySize = EnvLong("HGRESUME_MAX_REQUEST_BODY_SIZE", DefaultMaxRequestBodySize),
+            ResetCleanupAgeDays = EnvInt("HGRESUME_RESET_CLEANUP_AGE_DAYS", 31),
         };
     }
 
@@ -49,5 +56,11 @@ public sealed class ApiConfig
     {
         string? v = Environment.GetEnvironmentVariable(name);
         return long.TryParse(v, out var n) && n > 0 ? n : fallback;
+    }
+
+    private static int EnvInt(string name, int fallback)
+    {
+        string? v = Environment.GetEnvironmentVariable(name);
+        return int.TryParse(v, out var n) && n > 0 ? n : fallback;
     }
 }

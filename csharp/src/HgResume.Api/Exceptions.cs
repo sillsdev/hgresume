@@ -25,3 +25,21 @@ public class ValidationException : Exception
 {
     public ValidationException(string message) : base(message) { }
 }
+
+public class AlreadyExistsException : Exception
+{
+    public AlreadyExistsException(string message) : base(message) { }
+}
+
+public class ProjectResetException : Exception
+{
+    public string ErrorCode { get; }
+
+    public static ProjectResetException ZipMissingHgFolder() =>
+        new("Zip file does not contain a .hg folder", "ZIP_MISSING_HG_FOLDER");
+
+    private ProjectResetException(string message, string errorCode) : base(message)
+    {
+        ErrorCode = errorCode;
+    }
+}
