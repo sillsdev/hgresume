@@ -13,27 +13,57 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  test:
-    name: Build image and run HTTP-level tests
+  build-test-push:
+    name: Build image, run tests, then push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
-      - name: Build image for tests (amd64, loaded into docker)
-        uses: docker/build-push-action@v6
+      # A step output, not an env var: a job-wide `VERSION` env var is imported by MSBuild as the
+      # $(Version) property and breaks `dotnet test` ('v<date>' is not a valid version string).
+      - name: Set version tag
+        id: version
+        run: echo "value=v$(date --rfc-3339=date)" >> "${GITHUB_OUTPUT}"
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          # For a pull request this produces the tag `pr-<number>`, so the image can be pulled and
+          # tested in a real environment: `docker pull ghcr.io/<repo>:pr-<number>`.
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=${{ steps.version.outputs.value }},enable=${{ github.event_name != 'pull_request' }}
+
+      # Build the amd64 image and load it into the local Docker daemon so the test fixtures can run it
+      # as a container (a multi-arch image can't be loaded/run directly). The multi-arch push step below
+      # reuses this build's cache, so amd64 is not compiled twice.
+      - name: Build and export to Docker (amd64)
+        uses: docker/build-push-action@v7
         with:
           context: csharp
           file: csharp/Dockerfile
           load: true
           platforms: linux/amd64
           tags: hgresume-csharp:test
+          cache-to: type=gha,mode=max
+          cache-from: type=gha
 
       - name: Set up .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: '10.0.x'
 
@@ -48,51 +78,28 @@ jobs:
           HGRESUME_PORT: '8034'
         run: dotnet test test/HgResume.HttpTests/HgResume.HttpTests.csproj --logger "console;verbosity=normal"
 
-  build:
-    name: Build and push docker image to GitHub packages
-    needs: test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set Version
-        run: |
-          echo "VERSION=v$(date --rfc-3339=date)" >> ${GITHUB_ENV}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Run send/receive tests (real Chorus client) against the image
+        working-directory: csharp
+        env:
+          HGRESUME_PODMAN: docker
+          HGRESUME_IMAGE: hgresume-csharp:test
+          HGRESUME_SKIP_BUILD: '1'
+          HGRESUME_PORT: '8041'
+        run: dotnet test test/HgResume.SendReceiveTests/HgResume.SendReceiveTests.csproj --logger "console;verbosity=normal"
 
       - name: Log in to the Container registry
         # Fork PRs get a read-only GITHUB_TOKEN; skip login/push so the job still builds without a 403.
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata (tags, labels) for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          # For a pull request this produces the tag `pr-<number>`, so the image can be pulled and
-          # tested in a real environment: `docker pull ghcr.io/<repo>:pr-<number>`.
-          tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=raw,value=${{ env.VERSION }},enable=${{ github.event_name != 'pull_request' }}
-
+      # Multi-arch build + push. amd64 layers come from the cache populated above (no recompile); only
+      # arm64 is built here. Push is gated the same way as login.
       - name: Build and push Docker image (C#)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: csharp
           file: csharp/Dockerfile
@@ -100,3 +107,4 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha

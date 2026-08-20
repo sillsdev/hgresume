@@ -7,8 +7,9 @@
     dependencies replaced by creating repos directly in the container. We use the Chorus hg repo +
     transport directly rather than the full LfMergeBridge flow (its FixFwData fixup needs the whole
     FieldWorks stack and never touches the server), so we only depend on LibChorus + the bundled
-    Mercurial. Windows-only (LibChorus pulls in .NET Framework deps) and requires podman + the built
-    image, so this project is intentionally NOT part of the Linux CI test job.
+    Mercurial. Requires a container runtime (docker/podman) + the built image. Runs in Linux CI: the
+    checked-in Windows Mercurial bundle below is staged on Windows only, so on Linux the cross-platform
+    hg that SIL.Chorus.Mercurial ships is used instead.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -35,9 +36,32 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="Mercurial\**" CopyToOutputDirectory="Always" />
-    <Content Include="MercurialExtensions\**" CopyToOutputDirectory="Always" />
     <Content Include="test-template-repo.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <!--
+    SIL.Chorus.Mercurial's CopyFiles target drops the platform hg (Mercurial/) and the cross-platform
+    fixutf8 extension (MercurialExtensions/, from runtimes/any) into the project dir during Build.
+    That happens after project evaluation, so a static <Content Include> glob misses the files on a
+    clean build. Stage them into the output dir here, after CopyFiles has populated the project dir,
+    so Chorus finds MercurialExtensions/fixutf8 at runtime (it resolves it relative to the test
+    assembly). On Linux the linux-x64 hg is already copied to output by NuGet's runtime-asset handling
+    (VerifyHgWorking confirms it), so only MercurialExtensions needs staging there; the win hg has no
+    standard RID folder and is only staged on Windows.
+  -->
+  <Target Name="StageMercurialForChorus" AfterTargets="Build">
+    <ItemGroup>
+      <_HgExtDrop Include="$(MSBuildProjectDirectory)/MercurialExtensions/**" />
+      <_HgBinDrop Include="$(MSBuildProjectDirectory)/Mercurial/**"
+                  Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_HgExtDrop)"
+          DestinationFiles="@(_HgExtDrop->'$(OutDir)MercurialExtensions/%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(_HgBinDrop)"
+          DestinationFiles="@(_HgBinDrop->'$(OutDir)Mercurial/%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true"
+          Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+  </Target>
 
 </Project>
