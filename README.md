@@ -7,6 +7,10 @@ clients work unchanged.
 Authentication is intentionally **not** implemented here; it is handled by the surrounding platform
 (reverse proxy / gateway).
 
+The original PHP implementation is no longer in this tree. The last commit that still contains it is
+[`3f2b3c7`](https://github.com/sillsdev/hgresume/tree/3f2b3c7402408de3a1f0f8a36b21586df929b898)
+([`api/`](https://github.com/sillsdev/hgresume/tree/3f2b3c7402408de3a1f0f8a36b21586df929b898/api)).
+
 ## Layout
 
 - `csharp/src/HgResume.Api/` — the ASP.NET Core app (net10.0).
