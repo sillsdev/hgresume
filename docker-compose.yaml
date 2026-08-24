@@ -1,7 +1,9 @@
 services:
   hgresumable:
     container_name: hgresumable
-    build: .
+    build:
+      context: csharp
+      dockerfile: Dockerfile
     ports:
       - 8034:80
     volumes:
