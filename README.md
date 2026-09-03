@@ -21,8 +21,9 @@ The original PHP implementation is no longer in this tree. The last commit that 
   - `AsyncRunner` — runs long hg commands in the background and signals completion via a `.async_run`
     file, so a later HTTP request can observe the result (this is what makes transfers resumable).
   - `BundleHelper` — per-transaction state + metadata (stored as JSON).
-- `csharp/test/HgResume.HttpTests/` — HTTP-level xUnit tests. They drive the **running container**
-  over HTTP (via a podman-managed fixture) and assert on the protocol.
+- `csharp/test/HgResume.IntegrationTests/` — xUnit tests that drive the **running container** (via a
+  podman-managed fixture): HTTP-level wire-protocol tests, and end-to-end send/receive tests using the
+  real Chorus resumable client.
 - `csharp/Dockerfile` — multi-stage `dotnet/sdk:10.0` → `dotnet/aspnet:10.0`, installs `mercurial`.
   Listens on port 80 and exposes `/var/cache/hgresume` and `/var/vcs/public`.
 - `docker-compose.yaml` — local run against a host Mercurial repo tree.
@@ -53,16 +54,19 @@ curl -i http://localhost:8034/api/v03/isAvailable
 
 ## Tests
 
-The HTTP-level suite builds the image, runs it in a container, seeds fixture repos, and exercises
-the protocol end-to-end:
+The integration suite builds the image, runs it in a container, seeds fixture repos, and exercises
+the protocol end-to-end — both directly over HTTP and via the real Chorus resumable client:
 
 ```bash
 cd csharp
 ./run-tests.sh          # or: pwsh ./run-tests.ps1
 ```
 
-Useful env overrides: `HGRESUME_IMAGE`, `HGRESUME_PORT`, `HGRESUME_SKIP_BUILD`, and
-`HGRESUME_BASE_URL` + `HGRESUME_CONTAINER` (to run the tests against an already-running container).
+Useful env overrides: `HGRESUME_IMAGE`, `HGRESUME_SKIP_BUILD`, and `HGRESUME_BASE_URL` +
+`HGRESUME_CONTAINER` (to run the tests against an already-running container). The suite drives the
+container via [Testcontainers](https://testcontainers.com/), which needs a Docker-API-compatible
+endpoint — Docker Desktop/Engine work out of the box; podman needs its API socket exposed and
+`DOCKER_HOST` pointed at it.
 
 ## CI
 

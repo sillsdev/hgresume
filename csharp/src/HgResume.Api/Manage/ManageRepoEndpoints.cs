@@ -165,7 +165,31 @@ public static class ManageRepoEndpoints
             max.MaxRequestBodySize = null;
         }
 
-        await repos.FinishReset(projectCode, request.Body, cancellationToken);
+        // ZipArchive needs a seekable stream (to read the central directory), and request.Body is
+        // neither seekable nor safe to read synchronously, so buffer it first. Repo zips can be
+        // large, so buffer to a temp file rather than to memory.
+        var zipPath = Path.Combine(Path.GetTempPath(), $"hgresume-finish-reset-{Guid.NewGuid():N}.zip");
+        try
+        {
+            await using (var zipBuffer = new FileStream(
+                             zipPath,
+                             FileMode.CreateNew,
+                             FileAccess.ReadWrite,
+                             FileShare.None,
+                             bufferSize: 64 * 1024,
+                             FileOptions.Asynchronous | FileOptions.SequentialScan))
+            {
+                await request.Body.CopyToAsync(zipBuffer, cancellationToken);
+                zipBuffer.Position = 0;
+
+                await repos.FinishReset(projectCode, zipBuffer, cancellationToken);
+            }
+        }
+        finally
+        {
+            File.Delete(zipPath);
+        }
+
         return TypedResults.NoContent();
     }
 

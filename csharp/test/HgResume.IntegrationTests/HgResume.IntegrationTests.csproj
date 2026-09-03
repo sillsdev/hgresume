@@ -1,15 +1,19 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    End-to-end tests that drive the real Chorus resumable transport (LibChorus HgRepository +
-    HgResumeTransport) against our C# hgresume container. Adapted from LexBox
+    Integration tests that drive the real hgresume C# image in a container. Two styles share one
+    ServerFixture/container: HTTP-level wire-protocol tests (ApiClient, e.g. PushFacts/PullFacts) and
+    end-to-end send/receive tests that drive the real Chorus resumable transport (LibChorus
+    HgRepository + HgResumeTransport). The Chorus tests are adapted from LexBox
     backend/Testing/SyncReverseProxy/SendReceiveServiceTests.cs, with the LexBox server/API/auth
-    dependencies replaced by creating repos directly in the container. We use the Chorus hg repo +
-    transport directly rather than the full LfMergeBridge flow (its FixFwData fixup needs the whole
-    FieldWorks stack and never touches the server), so we only depend on LibChorus + the bundled
-    Mercurial. Requires a container runtime (docker/podman) + the built image. Runs in Linux CI: the
-    checked-in Windows Mercurial bundle below is staged on Windows only, so on Linux the cross-platform
-    hg that SIL.Chorus.Mercurial ships is used instead.
+    dependencies replaced by creating repos directly in the container via /api/manage. We use the
+    Chorus hg repo + transport directly rather than the full LfMergeBridge flow (its FixFwData fixup
+    needs the whole FieldWorks stack and never touches the server), so we only depend on LibChorus +
+    the bundled Mercurial. Drives the container via Testcontainers, which needs a Docker-API-compatible
+    endpoint (Docker Desktop/Engine work out of the box; podman needs its API socket exposed and
+    DOCKER_HOST pointed at it). Runs in Linux CI: the checked-in Windows Mercurial bundle below is
+    staged on Windows only, so on Linux the cross-platform hg that SIL.Chorus.Mercurial ships is used
+    instead.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -23,6 +27,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Testcontainers" Version="4.14.0" />
     <PackageReference Include="SIL.Chorus.LibChorus" Version="6.0.0-beta0064" />
     <PackageReference Include="SIL.Chorus.Mercurial" Version="6.5.1.43" />
     <PackageReference Include="SIL.Core" Version="17.0.0" />
@@ -36,6 +41,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="data/**/*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="test-template-repo.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

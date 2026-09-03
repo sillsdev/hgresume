@@ -2,7 +2,7 @@ using System.Net.Sockets;
 using System.Text;
 using Xunit;
 
-namespace HgResume.HttpTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>
 /// Wire-contract regression tests that the higher-level ApiClient (which uses HttpClient) cannot catch,
@@ -21,11 +21,11 @@ public sealed class ContractFacts
     [Fact]
     public void ResponseWithBody_SetsContentLength_AndIsNotChunked()
     {
-        _fx.SeedRepo("sampleHgRepo2.zip");
+        _fx.SeedRepo("sample-hg-repo2.zip");
 
         var uri = new Uri(_fx.BaseUrl);
         string raw = RawGet(uri.Host, uri.Port,
-            "/api/v03/getRevisions?offset=0&quantity=50&repoId=sampleHgRepo2");
+            "/api/v03/getRevisions?offset=0&quantity=50&repoId=sample-hg-repo2");
 
         int sep = raw.IndexOf("\r\n\r\n", StringComparison.Ordinal);
         Assert.True(sep > 0, "malformed HTTP response: no header/body separator");

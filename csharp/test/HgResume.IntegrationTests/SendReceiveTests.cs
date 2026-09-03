@@ -5,24 +5,24 @@ using SIL.Progress;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace HgResume.SendReceiveTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>
 /// The main LexBox e2e send/receive tests (SendReceiveServiceTests.cs) adapted to run against our C#
 /// hgresume container using the real Chorus resumable client. Auth/reset/hgweb-only cases are dropped;
 /// LexBox project registration is replaced by `hg init` in the container.
 /// </summary>
-[Collection("hgresume-server")]
+[Collection("server")]
 public class SendReceiveTests
 {
     private static readonly string BasePath = Path.Join(Path.GetTempPath(), "hgresume_sr_tests");
     private static readonly SendReceiveAuth Auth = new("test", "test"); // server ignores auth
 
     private readonly ITestOutputHelper _output;
-    private readonly HgResumeServerFixture _server;
+    private readonly ServerFixture _server;
     private readonly MercurialService _sr;
 
-    public SendReceiveTests(ITestOutputHelper output, HgResumeServerFixture server)
+    public SendReceiveTests(ITestOutputHelper output, ServerFixture server)
     {
         _output = output;
         _server = server;
@@ -37,7 +37,7 @@ public class SendReceiveTests
         var project = InitLocalFlexProjectWithRepo(code);
         _server.InitServerRepo(code);
 
-        var srp = new SendReceiveParams(protocol, _server.BaseUrl, project);
+        var srp = new SendReceiveParams(protocol, _server.HostPort, project);
 
         // Push the fresh project to the server
         _sr.SendReceiveProject(srp, Auth);
@@ -67,14 +67,14 @@ public class SendReceiveTests
         var code = NewCode();
         var project = InitLocalFlexProjectWithRepo(code);
         _server.InitServerRepo(code);
-        var srp = new SendReceiveParams(HgProtocol.Resumable, _server.BaseUrl, project);
+        var srp = new SendReceiveParams(HgProtocol.Resumable, _server.HostPort, project);
         _sr.SendReceiveProject(srp, Auth);
         (await _server.GetServerTip(code)).Should().NotBe("0", "the project should have been pushed to the server");
 
         // Clone it into a fresh directory over the resumable protocol.
         var cloneDir = Path.Join(BasePath, $"{code}-clone");
         if (Directory.Exists(cloneDir)) Directory.Delete(cloneDir, true);
-        var cloneParams = new SendReceiveParams(HgProtocol.Resumable, _server.BaseUrl, new ProjectPath(code, cloneDir));
+        var cloneParams = new SendReceiveParams(HgProtocol.Resumable, _server.HostPort, new ProjectPath(code, cloneDir));
         var clonedTo = _sr.CloneProject(cloneParams, Auth, cloneDir);
 
         // The cloned working directory should contain the fwdata, byte-identical to what we pushed.
@@ -97,7 +97,7 @@ public class SendReceiveTests
         var project = InitLocalFlexProjectWithRepo(code);
         _server.InitServerRepo(code);
 
-        var srp = new SendReceiveParams(HgProtocol.Resumable, _server.BaseUrl, project);
+        var srp = new SendReceiveParams(HgProtocol.Resumable, _server.HostPort, project);
 
         // add a bunch of large files as separate commits so the resumable push is large
         var progress = new NullProgress();
