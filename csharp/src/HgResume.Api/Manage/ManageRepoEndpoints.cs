@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -5,10 +6,37 @@ namespace HgResume.Api.Manage;
 
 public static class ManageRepoEndpoints
 {
+    private const string SecretHeader = "X-Manage-Secret";
+
+    /// <summary>
+    /// Shared-secret gate for the whole group. If <see cref="ApiConfig.ManageSecret"/> isn't
+    /// configured, the endpoints are left open (only valid when RequireManageSecret is false, which
+    /// is checked once at startup in Program.cs, not per-request here).
+    /// </summary>
+    private static async ValueTask<object?> RequireManageSecret(
+        EndpointFilterInvocationContext context,
+        EndpointFilterDelegate next)
+    {
+        var config = context.HttpContext.RequestServices.GetRequiredService<ApiConfig>();
+        if (config.ManageSecret is { Length: > 0 } expected)
+        {
+            var provided = context.HttpContext.Request.Headers[SecretHeader].ToString();
+            if (!CryptographicOperations.FixedTimeEquals(
+                    System.Text.Encoding.UTF8.GetBytes(provided),
+                    System.Text.Encoding.UTF8.GetBytes(expected)))
+            {
+                return Results.Unauthorized();
+            }
+        }
+
+        return await next(context);
+    }
+
     public static RouteGroupBuilder MapManageRepos(this WebApplication app)
     {
         var group = app.MapGroup("/api/manage")
-            .WithTags("Manage");
+            .WithTags("Manage")
+            .AddEndpointFilter(RequireManageSecret);
 
         group.MapPost("/repos/{code}", InitRepo)
             .WithName("InitRepo")

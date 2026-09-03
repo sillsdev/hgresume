@@ -29,7 +29,21 @@ public sealed class ApiConfig
     /// </summary>
     public required int ResetCleanupAgeDays { get; init; }
 
-    public static ApiConfig FromEnvironment()
+    /// <summary>
+    /// Shared secret callers must send (as the <c>X-Manage-Secret</c> header) to reach
+    /// <c>/api/manage/*</c>. Unset means the endpoints are open, which is only acceptable when
+    /// <see cref="RequireManageSecret"/> is also false (e.g. local dev).
+    /// </summary>
+    public string? ManageSecret { get; init; }
+
+    /// <summary>
+    /// Whether <see cref="ManageSecret"/> must be configured. Defaults to true so a deployment can't
+    /// accidentally leave the manage API open; defaults to false in development so it works out of
+    /// the box locally.
+    /// </summary>
+    public required bool RequireManageSecret { get; init; }
+
+    public static ApiConfig FromEnvironment(bool isDevelopment)
     {
         string cache = Env("HGRESUME_CACHE_PATH", "/var/cache/hgresume");
         string repos = Env("HGRESUME_REPO_PATHS", "/var/vcs/public;/var/vcs/private");
@@ -43,6 +57,8 @@ public sealed class ApiConfig
             MaintenanceFilePath = maintenance,
             MaxRequestBodySize = EnvLong("HGRESUME_MAX_REQUEST_BODY_SIZE", DefaultMaxRequestBodySize),
             ResetCleanupAgeDays = EnvInt("HGRESUME_RESET_CLEANUP_AGE_DAYS", 31),
+            ManageSecret = Environment.GetEnvironmentVariable("HGRESUME_MANAGE_SECRET") is { Length: > 0 } s ? s : null,
+            RequireManageSecret = EnvBool("HGRESUME_REQUIRE_MANAGE_SECRET", !isDevelopment),
         };
     }
 
@@ -62,5 +78,11 @@ public sealed class ApiConfig
     {
         string? v = Environment.GetEnvironmentVariable(name);
         return int.TryParse(v, out var n) && n > 0 ? n : fallback;
+    }
+
+    private static bool EnvBool(string name, bool fallback)
+    {
+        string? v = Environment.GetEnvironmentVariable(name);
+        return bool.TryParse(v, out var b) ? b : fallback;
     }
 }

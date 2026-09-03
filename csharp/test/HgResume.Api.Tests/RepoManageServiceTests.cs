@@ -21,6 +21,7 @@ public sealed class RepoManageServiceTests : IDisposable
             MaintenanceFilePath = Path.Join(_basePath, "cache", "maintenance_message.txt"),
             MaxRequestBodySize = ApiConfig.DefaultMaxRequestBodySize,
             ResetCleanupAgeDays = 31,
+            RequireManageSecret = false,
         };
         _svc = new RepoManageService(config, NullLogger<RepoManageService>.Instance);
         _svc.EnsureLayout();

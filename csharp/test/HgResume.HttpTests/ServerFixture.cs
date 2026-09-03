@@ -56,7 +56,8 @@ public sealed class ServerFixture : IAsyncLifetime
             ContainerName = "hgresume-test-" + Environment.ProcessId;
             // Clean up a stale container with the same name, if any.
             TryRun(_podman, "rm", "-f", ContainerName);
-            Run(_podman, "run", "-d", "--name", ContainerName, "-p", $"{_port}:80", _image);
+            Run(_podman, "run", "-d", "--name", ContainerName, "-p", $"{_port}:80",
+                "-e", "HGRESUME_MANAGE_SECRET=test-secret", _image);
             _startedByUs = true;
             BaseUrl = $"http://localhost:{_port}";
         }

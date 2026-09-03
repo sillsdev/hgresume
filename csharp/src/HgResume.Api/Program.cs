@@ -4,7 +4,13 @@ using HgResume.Api.Manage;
 using HgResume.Api.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
-var config = ApiConfig.FromEnvironment();
+var config = ApiConfig.FromEnvironment(builder.Environment.IsDevelopment());
+
+if (config.RequireManageSecret && string.IsNullOrEmpty(config.ManageSecret))
+{
+    throw new InvalidOperationException(
+        "HGRESUME_MANAGE_SECRET must be set (or HGRESUME_REQUIRE_MANAGE_SECRET=false) to expose /api/manage/*.");
+}
 
 // Make the push body cap explicit (and env-overridable) rather than relying on Kestrel's implicit
 // 30 MB default — oversize bodies are rejected with a bare 413 before RestDispatcher runs.

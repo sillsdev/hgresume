@@ -35,6 +35,8 @@ The original PHP implementation is no longer in this tree. The last commit that 
 | `HGRESUME_REPO_PATHS` | `/var/vcs/public;/var/vcs/private` | `;`-separated repo search paths |
 | `HGRESUME_MAINTENANCE_FILE` | `<cache>/maintenance_message.txt` | non-empty file ⇒ 503 maintenance mode |
 | `HGRESUME_MAX_REQUEST_BODY_SIZE` | `30000000` | max request body bytes (Kestrel; raise for whole-bundle pushes) |
+| `HGRESUME_MANAGE_SECRET` | unset | shared secret callers must send as `X-Manage-Secret` to reach `/api/manage/*` |
+| `HGRESUME_REQUIRE_MANAGE_SECRET` | `true` (`false` in Development) | if true and `HGRESUME_MANAGE_SECRET` is unset, the app refuses to start |
 | `ASPNETCORE_URLS` | `http://+:80` | listen address |
 
 ## Build & run
