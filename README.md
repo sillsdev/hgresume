@@ -62,8 +62,11 @@ cd csharp
 ./run-tests.sh          # or: pwsh ./run-tests.ps1
 ```
 
-Useful env overrides: `HGRESUME_IMAGE`, `HGRESUME_PORT`, `HGRESUME_SKIP_BUILD`, and
-`HGRESUME_BASE_URL` + `HGRESUME_CONTAINER` (to run the tests against an already-running container).
+Useful env overrides: `HGRESUME_IMAGE`, `HGRESUME_SKIP_BUILD`, and `HGRESUME_BASE_URL` +
+`HGRESUME_CONTAINER` (to run the tests against an already-running container). The suite drives the
+container via [Testcontainers](https://testcontainers.com/), which needs a Docker-API-compatible
+endpoint — Docker Desktop/Engine work out of the box; podman needs its API socket exposed and
+`DOCKER_HOST` pointed at it.
 
 ## CI
 

@@ -69,12 +69,10 @@ jobs:
       - name: Run integration tests (HTTP-level + real Chorus client) against the image
         working-directory: csharp
         env:
-          # The test fixture drives a container via this CLI (docker on the runner); it starts/stops
-          # the pre-built image itself, so we skip the fixture's own build step.
-          HGRESUME_PODMAN: docker
+          # The test fixture drives the pre-built image itself via Testcontainers (against the
+          # runner's local Docker daemon), so we skip the fixture's own build step.
           HGRESUME_IMAGE: hgresume-csharp:test
           HGRESUME_SKIP_BUILD: '1'
-          HGRESUME_PORT: '8034'
         run: dotnet test test/HgResume.IntegrationTests/HgResume.IntegrationTests.csproj --logger "console;verbosity=normal"
 
       - name: Log in to the Container registry

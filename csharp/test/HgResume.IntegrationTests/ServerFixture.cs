@@ -1,40 +1,45 @@
-using System.Diagnostics;
 using System.IO.Compression;
-using System.Net;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Containers;
+using DotNet.Testcontainers.Images;
 using Xunit;
 
 namespace HgResume.IntegrationTests;
 
 /// <summary>
-/// Shared fixture that runs the hgresume C# image in a container (via podman) and drives it over HTTP.
-/// One container serves both test styles in this project: the HTTP-level wire-protocol tests (via
-/// <see cref="Client"/>, an <see cref="ApiClient"/>) and the end-to-end Chorus send/receive tests (via
-/// <see cref="InitServerRepo"/>/<see cref="GetServerTip"/> and <see cref="HostPort"/>).
+/// Shared fixture that runs the hgresume C# image in a container (via Testcontainers) and drives it
+/// over HTTP. One container serves both test styles in this project: the HTTP-level wire-protocol
+/// tests (via <see cref="Client"/>, an <see cref="ApiClient"/>) and the end-to-end Chorus send/receive
+/// tests (via <see cref="InitServerRepo"/>/<see cref="GetServerTip"/> and <see cref="HostPort"/>).
 ///
 /// Repos are seeded and torn down through the container's own <c>/api/manage/*</c> endpoints (see
-/// <see cref="ManageSecret"/>), so nothing needs host-side <c>podman cp</c> access into the container's
-/// filesystem. The one exception is <see cref="MiscFacts.GetRevisions_SubDir_Works"/>, which seeds a
-/// repo at a path the manage API's <c>ProjectCode</c> validation deliberately rejects (it contains
-/// "/") — that case, plus <see cref="AddAndCommit"/> and the maintenance-file helpers (none of which
-/// are "manage" operations), still go through <c>podman exec</c>/<c>cp</c>.
+/// <see cref="ManageSecret"/>), so nothing needs host-side access into the container's filesystem. The
+/// one exception is <see cref="MiscFacts.GetRevisions_SubDir_Works"/>, which seeds a repo at a path the
+/// manage API's <c>ProjectCode</c> validation deliberately rejects (it contains "/") — that case, plus
+/// <see cref="AddAndCommit"/> and the maintenance-file helpers (none of which are "manage" operations),
+/// still go through <see cref="IContainer.ExecAsync"/>/<see cref="IContainer.CopyAsync(DirectoryInfo, string, uint, uint, DotNet.Testcontainers.Configurations.UnixFileModes, CancellationToken)"/>,
+/// which are unavailable when reusing an external server (see HGRESUME_BASE_URL below) and throw.
+///
+/// Testcontainers talks to the Docker Engine API directly rather than shelling out to a CLI, so a
+/// plain podman-CLI-only setup is not enough on its own — podman needs to expose a Docker-API-compatible
+/// socket (e.g. via `podman machine`) with `DOCKER_HOST` pointed at it. Docker Desktop/Docker Engine
+/// work out of the box.
 ///
 /// Environment overrides:
-///   HGRESUME_PODMAN     container CLI (default "podman")
-///   HGRESUME_IMAGE      image to run (default "hgresume-csharp:test")
-///   HGRESUME_PORT       host port to publish (default "8034")
+///   HGRESUME_IMAGE      image to run/build (default "hgresume-csharp:test")
 ///   HGRESUME_SKIP_BUILD if set, do not build the image (assume it exists)
 ///   HGRESUME_BASE_URL   reuse an already-running server at this URL (with HGRESUME_CONTAINER)
-///   HGRESUME_CONTAINER  name of the already-running container to exec/cp against
+///   HGRESUME_CONTAINER  name of the already-running container (informational only in this mode)
 ///   HGRESUME_KEEP       if set, do not stop/remove the container on teardown
 /// </summary>
 public sealed class ServerFixture : IAsyncLifetime
 {
-    // Shared with the -e HGRESUME_MANAGE_SECRET passed to `podman run` below.
+    private const ushort ContainerPort = 80;
+
+    // Shared with the HGRESUME_MANAGE_SECRET environment variable passed to the container below.
     private const string ManageSecret = "test-secret";
 
-    private readonly string _podman = Env("HGRESUME_PODMAN", "podman");
     private readonly string _image = Env("HGRESUME_IMAGE", "hgresume-csharp:test");
-    private readonly string _port = Env("HGRESUME_PORT", "8034");
     private readonly string _dataDir = Path.Combine(AppContext.BaseDirectory, "data");
     // Set HGRESUME_REPO_OWNER (e.g. "www-data") to chown seeded repos when the server runs as a
     // non-root user (the PHP/Apache reference image). Empty = leave ownership as-is (C# runs as root).
@@ -43,7 +48,7 @@ public sealed class ServerFixture : IAsyncLifetime
     // looks in its src dir (SourcePath . "/maintenance_message.txt").
     private readonly string _maintPath = Env("HGRESUME_MAINT_PATH", "/var/cache/hgresume/maintenance_message.txt");
 
-    private bool _startedByUs;
+    private IContainer? _container;
     private HttpClient? _manageHttp;
 
     public string ContainerName { get; private set; } = "";
@@ -67,57 +72,53 @@ public sealed class ServerFixture : IAsyncLifetime
         {
             BaseUrl = reuseUrl;
             ContainerName = Env("HGRESUME_CONTAINER", "hgresumable");
+            Client = new ApiClient(BaseUrl);
+            return;
+        }
+
+        bool keep = Environment.GetEnvironmentVariable("HGRESUME_KEEP") is not null;
+        ContainerName = "hgresume-test-" + Environment.ProcessId;
+
+        IImage image;
+        if (Environment.GetEnvironmentVariable("HGRESUME_SKIP_BUILD") is null)
+        {
+            IFutureDockerImage futureImage = new ImageFromDockerfileBuilder()
+                .WithName(_image)
+                .WithDockerfileDirectory(FindContextDir())
+                .WithDockerfile("Dockerfile")
+                .Build();
+            await futureImage.CreateAsync();
+            image = futureImage;
         }
         else
         {
-            if (Environment.GetEnvironmentVariable("HGRESUME_SKIP_BUILD") is null)
-            {
-                string context = FindContextDir();
-                Run(_podman, "build", "-t", _image, "-f", Path.Combine(context, "Dockerfile"), context);
-            }
-
-            ContainerName = "hgresume-test-" + Environment.ProcessId;
-            // Clean up a stale container with the same name, if any.
-            TryRun(_podman, "rm", "-f", ContainerName);
-            Run(_podman, "run", "-d", "--name", ContainerName, "-p", $"{_port}:80",
-                "-e", $"HGRESUME_MANAGE_SECRET={ManageSecret}", _image);
-            _startedByUs = true;
-            BaseUrl = $"http://localhost:{_port}";
+            image = new DockerImage(_image);
         }
 
+        _container = new ContainerBuilder(image)
+            .WithName(ContainerName)
+            .WithPortBinding(ContainerPort, assignRandomHostPort: true)
+            .WithEnvironment("HGRESUME_MANAGE_SECRET", ManageSecret)
+            .WithCleanUp(!keep)
+            .WithWaitStrategy(Wait.ForUnixContainer()
+                .UntilHttpRequestIsSucceeded(r => r.ForPort(ContainerPort).ForPath("/api/v03/isAvailable")))
+            .Build();
+        await _container.StartAsync();
+        BaseUrl = $"http://{_container.Hostname}:{_container.GetMappedPublicPort(ContainerPort)}";
         Client = new ApiClient(BaseUrl);
-        await WaitForReadyAsync();
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         _manageHttp?.Dispose();
-        if (_startedByUs && Environment.GetEnvironmentVariable("HGRESUME_KEEP") is null)
-        {
-            TryRun(_podman, "logs", ContainerName); // surfaced in test output on failures
-            TryRun(_podman, "rm", "-f", ContainerName);
-        }
-        return Task.CompletedTask;
-    }
+        if (_container is null) return;
 
-    private async Task WaitForReadyAsync()
-    {
-        var deadline = DateTime.UtcNow.AddSeconds(90);
-        Exception? last = null;
-        while (DateTime.UtcNow < deadline)
-        {
-            try
-            {
-                var r = Client.IsAvailable();
-                if ((int)r.Http == 200) return;
-            }
-            catch (Exception e)
-            {
-                last = e;
-            }
-            await Task.Delay(500);
-        }
-        throw new Exception($"Server at {BaseUrl} did not become ready in time. Last error: {last?.Message}");
+        if (Environment.GetEnvironmentVariable("HGRESUME_KEEP") is not null) return;
+
+        var (stdout, stderr) = await _container.GetLogsAsync();
+        Console.WriteLine("--- container stdout ---\n" + stdout);
+        Console.WriteLine("--- container stderr ---\n" + stderr);
+        await _container.DisposeAsync();
     }
 
     // ---- repo/maintenance seeding ---------------------------------------------------------------
@@ -127,8 +128,8 @@ public sealed class ServerFixture : IAsyncLifetime
     /// POST /api/manage/repos/{code}/finish-reset (the zip becomes the repo's .hg folder) unless
     /// repoId isn't a valid ProjectCode (e.g. contains "/"; see
     /// <see cref="MiscFacts.GetRevisions_SubDir_Works"/>) or HGRESUME_REPO_OWNER is set (a non-root
-    /// image with no manage API), in which case it falls back to extracting on the host and
-    /// `podman cp`-ing the result in.
+    /// image with no manage API), in which case it falls back to extracting on the host and copying
+    /// the result into the container directly.
     /// </summary>
     public string SeedRepo(string zipName, string? repoId = null)
     {
@@ -161,7 +162,8 @@ public sealed class ServerFixture : IAsyncLifetime
             ZipFile.ExtractToDirectory(localZip, extractDir);
 
             Exec($"rm -rf /var/vcs/public/{repoId}");
-            Run(_podman, "cp", extractDir, $"{ContainerName}:/var/vcs/public/{repoId}");
+            RequireContainer().CopyAsync(new DirectoryInfo(extractDir), $"/var/vcs/public/{repoId}")
+                .GetAwaiter().GetResult();
             if (!string.IsNullOrEmpty(_repoOwner))
             {
                 Exec($"chown -R {_repoOwner}:{_repoOwner} /var/vcs/public/{repoId}");
@@ -213,7 +215,12 @@ public sealed class ServerFixture : IAsyncLifetime
         return first.Split(':').FirstOrDefault() ?? "";
     }
 
-    public string ContainerLogs() => TryRun(_podman, "logs", ContainerName).Out;
+    public string ContainerLogs()
+    {
+        if (_container is null) return "";
+        var (stdout, stderr) = _container.GetLogsAsync().GetAwaiter().GetResult();
+        return stdout + stderr;
+    }
 
     /// <summary>Adds and commits a file into the given repo (mirrors the PHP addAndCheckInFile helper).</summary>
     public void AddAndCommit(string repoId, string filename, string content)
@@ -244,13 +251,23 @@ public sealed class ServerFixture : IAsyncLifetime
         => Exec($"rm -f {_maintPath}");
 
     public void Exec(string shellCommand)
-        => Run(_podman, "exec", ContainerName, "sh", "-lc", shellCommand);
+    {
+        var result = RequireContainer().ExecAsync(["sh", "-lc", shellCommand]).GetAwaiter().GetResult();
+        if (result.ExitCode != 0)
+        {
+            throw new Exception($"`{shellCommand}` failed ({result.ExitCode}).\nstdout:\n{result.Stdout}\nstderr:\n{result.Stderr}");
+        }
+    }
 
     public byte[] Fixture(string name) => File.ReadAllBytes(Path.Combine(_dataDir, name));
 
     public string FixtureText(string name) => File.ReadAllText(Path.Combine(_dataDir, name)).Trim();
 
-    // ---- process helpers ------------------------------------------------------------------------
+    // ---- helpers ---------------------------------------------------------------------------------
+
+    private IContainer RequireContainer() => _container ?? throw new NotSupportedException(
+        "Exec/filesystem-based helpers aren't available when reusing an external server via " +
+        "HGRESUME_BASE_URL; use the /api/manage-based helpers (SeedRepo, RemoveRepo, InitServerRepo) instead.");
 
     private static string FindContextDir()
     {
@@ -265,34 +282,6 @@ public sealed class ServerFixture : IAsyncLifetime
             dir = dir.Parent;
         }
         throw new Exception("could not locate csharp/ context dir (with Dockerfile) above the test output");
-    }
-
-    private static (int Code, string Out, string Err) Run(string exe, params string[] args)
-    {
-        var (code, so, se) = TryRun(exe, args);
-        if (code != 0)
-        {
-            throw new Exception($"`{exe} {string.Join(' ', args)}` failed ({code}).\nstdout:\n{so}\nstderr:\n{se}");
-        }
-        return (code, so, se);
-    }
-
-    private static (int Code, string Out, string Err) TryRun(string exe, params string[] args)
-    {
-        var psi = new ProcessStartInfo
-        {
-            FileName = exe,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        foreach (var a in args) psi.ArgumentList.Add(a);
-
-        using var proc = Process.Start(psi)!;
-        var so = proc.StandardOutput.ReadToEndAsync();
-        var se = proc.StandardError.ReadToEndAsync();
-        proc.WaitForExit();
-        return (proc.ExitCode, so.GetAwaiter().GetResult(), se.GetAwaiter().GetResult());
     }
 
     private static string Env(string name, string fallback)
