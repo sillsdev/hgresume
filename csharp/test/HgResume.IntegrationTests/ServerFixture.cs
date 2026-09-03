@@ -3,10 +3,14 @@ using System.IO.Compression;
 using System.Net;
 using Xunit;
 
-namespace HgResume.HttpTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>
 /// Shared fixture that runs the hgresume C# image in a container (via podman) and drives it over HTTP.
+/// One container serves both test styles in this project: the HTTP-level wire-protocol tests (via
+/// <see cref="Client"/>, an <see cref="ApiClient"/>) and the end-to-end Chorus send/receive tests (via
+/// <see cref="InitServerRepo"/>/<see cref="GetServerTip"/> and <see cref="HostPort"/>).
+///
 /// Repos are seeded and torn down through the container's own <c>/api/manage/*</c> endpoints (see
 /// <see cref="ManageSecret"/>), so nothing needs host-side <c>podman cp</c> access into the container's
 /// filesystem. The one exception is <see cref="MiscFacts.GetRevisions_SubDir_Works"/>, which seeds a
@@ -45,6 +49,9 @@ public sealed class ServerFixture : IAsyncLifetime
     public string ContainerName { get; private set; } = "";
     public string BaseUrl { get; private set; } = "";
     public ApiClient Client { get; private set; } = default!;
+
+    /// <summary>host:port with no scheme, e.g. for building a Chorus repo URL as http://{HostPort}/{code}.</summary>
+    public string HostPort => BaseUrl.Replace("http://", "").Replace("https://", "");
 
     private HttpClient ManageHttp => _manageHttp ??= new HttpClient
     {
@@ -181,6 +188,32 @@ public sealed class ServerFixture : IAsyncLifetime
             throw new Exception($"delete repo {repoId} failed: {(int)resp.StatusCode}");
         }
     }
+
+    /// <summary>Creates an empty hg repo on the server for the given project code, via /api/manage.</summary>
+    public void InitServerRepo(string code)
+    {
+        RemoveRepo(code);
+        using var resp = ManageHttp.PostAsync($"/api/manage/repos/{code}", null).GetAwaiter().GetResult();
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new Exception($"init repo {code} failed: {(int)resp.StatusCode}");
+        }
+    }
+
+    /// <summary>Returns the server's revision list ("hash:branch|...") for a repo, via the HTTP API.</summary>
+    public Task<string> GetServerRevisions(string code, int quantity = 50) =>
+        Task.Run(() => Client.GetRevisions(code, 0, quantity).Text);
+
+    /// <summary>Server tip hash (first revision), or "" if the repo is empty.</summary>
+    public async Task<string> GetServerTip(string code)
+    {
+        var revs = await GetServerRevisions(code, 1);
+        // format: "<hash>:<branch>|..."; empty repo returns "0:"
+        var first = revs.Split('|').FirstOrDefault() ?? "";
+        return first.Split(':').FirstOrDefault() ?? "";
+    }
+
+    public string ContainerLogs() => TryRun(_podman, "logs", ContainerName).Out;
 
     /// <summary>Adds and commits a file into the given repo (mirrors the PHP addAndCheckInFile helper).</summary>
     public void AddAndCommit(string repoId, string filename, string content)

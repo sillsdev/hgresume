@@ -1,7 +1,7 @@
 using System.Text;
 using Xunit;
 
-namespace HgResume.HttpTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>HTTP-level ports of the push cases in api/test/HgResumeApi_Test.php.</summary>
 [Collection("server")]

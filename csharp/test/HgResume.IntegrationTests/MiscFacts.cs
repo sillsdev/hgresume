@@ -1,7 +1,7 @@
 using System.Text;
 using Xunit;
 
-namespace HgResume.HttpTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>getRevisions, availability/maintenance, and wire-contract smoke checks.</summary>
 [Collection("server")]

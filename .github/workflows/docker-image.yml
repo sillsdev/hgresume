@@ -66,7 +66,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Run HTTP-level tests against the image
+      - name: Run integration tests (HTTP-level + real Chorus client) against the image
         working-directory: csharp
         env:
           # The test fixture drives a container via this CLI (docker on the runner); it starts/stops
@@ -75,16 +75,7 @@ jobs:
           HGRESUME_IMAGE: hgresume-csharp:test
           HGRESUME_SKIP_BUILD: '1'
           HGRESUME_PORT: '8034'
-        run: dotnet test test/HgResume.HttpTests/HgResume.HttpTests.csproj --logger "console;verbosity=normal"
-
-      - name: Run send/receive tests (real Chorus client) against the image
-        working-directory: csharp
-        env:
-          HGRESUME_PODMAN: docker
-          HGRESUME_IMAGE: hgresume-csharp:test
-          HGRESUME_SKIP_BUILD: '1'
-          HGRESUME_PORT: '8041'
-        run: dotnet test test/HgResume.SendReceiveTests/HgResume.SendReceiveTests.csproj --logger "console;verbosity=normal"
+        run: dotnet test test/HgResume.IntegrationTests/HgResume.IntegrationTests.csproj --logger "console;verbosity=normal"
 
       - name: Log in to the Container registry
         # Fork PRs get a read-only GITHUB_TOKEN; skip login/push so the job still builds without a 403.

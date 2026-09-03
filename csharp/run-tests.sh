@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the C# hgresume image with podman, then runs the HTTP-level test suite against a container.
+# Builds the C# hgresume image with podman, then runs the integration test suite against a container.
 # The test fixture starts/stops the container itself; this script just builds the image first.
 set -euo pipefail
 
@@ -17,5 +17,5 @@ export HGRESUME_IMAGE="$IMAGE"
 export HGRESUME_PORT="$PORT"
 export HGRESUME_SKIP_BUILD=1
 
-echo "==> Running HTTP-level tests against the image"
-dotnet test test/HgResume.HttpTests/HgResume.HttpTests.csproj --logger "console;verbosity=normal"
+echo "==> Running integration tests against the image"
+dotnet test test/HgResume.IntegrationTests/HgResume.IntegrationTests.csproj --logger "console;verbosity=normal"

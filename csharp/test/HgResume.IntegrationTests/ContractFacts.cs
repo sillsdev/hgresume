@@ -2,7 +2,7 @@ using System.Net.Sockets;
 using System.Text;
 using Xunit;
 
-namespace HgResume.HttpTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>
 /// Wire-contract regression tests that the higher-level ApiClient (which uses HttpClient) cannot catch,

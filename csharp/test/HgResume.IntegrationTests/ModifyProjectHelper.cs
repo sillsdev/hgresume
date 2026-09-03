@@ -1,4 +1,4 @@
-namespace HgResume.SendReceiveTests;
+namespace HgResume.IntegrationTests;
 
 // Verbatim from LexBox backend/Testing/Services/ModifyProjectHelper.cs — byte-patches the fwdata's
 // DateModified field so a subsequent send/receive has a real change to transfer.

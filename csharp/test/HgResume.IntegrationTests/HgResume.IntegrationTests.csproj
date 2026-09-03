@@ -1,15 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    End-to-end tests that drive the real Chorus resumable transport (LibChorus HgRepository +
-    HgResumeTransport) against our C# hgresume container. Adapted from LexBox
+    Integration tests that drive the real hgresume C# image in a container. Two styles share one
+    ServerFixture/container: HTTP-level wire-protocol tests (ApiClient, e.g. PushFacts/PullFacts) and
+    end-to-end send/receive tests that drive the real Chorus resumable transport (LibChorus
+    HgRepository + HgResumeTransport). The Chorus tests are adapted from LexBox
     backend/Testing/SyncReverseProxy/SendReceiveServiceTests.cs, with the LexBox server/API/auth
-    dependencies replaced by creating repos directly in the container. We use the Chorus hg repo +
-    transport directly rather than the full LfMergeBridge flow (its FixFwData fixup needs the whole
-    FieldWorks stack and never touches the server), so we only depend on LibChorus + the bundled
-    Mercurial. Requires a container runtime (docker/podman) + the built image. Runs in Linux CI: the
-    checked-in Windows Mercurial bundle below is staged on Windows only, so on Linux the cross-platform
-    hg that SIL.Chorus.Mercurial ships is used instead.
+    dependencies replaced by creating repos directly in the container via /api/manage. We use the
+    Chorus hg repo + transport directly rather than the full LfMergeBridge flow (its FixFwData fixup
+    needs the whole FieldWorks stack and never touches the server), so we only depend on LibChorus +
+    the bundled Mercurial. Requires a container runtime (docker/podman) + the built image. Runs in
+    Linux CI: the checked-in Windows Mercurial bundle below is staged on Windows only, so on Linux the
+    cross-platform hg that SIL.Chorus.Mercurial ships is used instead.
   -->
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
@@ -36,6 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="data/**/*" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="test-template-repo.zip" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
