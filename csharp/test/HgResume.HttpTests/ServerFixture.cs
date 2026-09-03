@@ -1,13 +1,18 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using System.Net;
 using Xunit;
 
 namespace HgResume.HttpTests;
 
 /// <summary>
 /// Shared fixture that runs the hgresume C# image in a container (via podman) and drives it over HTTP.
-/// It seeds Mercurial repos into the repo volume by extracting fixtures on the host and
-/// <c>podman cp</c>-ing them in, so the production image does not need unzip.
+/// Repos are seeded and torn down through the container's own <c>/api/manage/*</c> endpoints (see
+/// <see cref="ManageSecret"/>), so nothing needs host-side <c>podman cp</c> access into the container's
+/// filesystem. The one exception is <see cref="MiscFacts.GetRevisions_SubDir_Works"/>, which seeds a
+/// repo at a path the manage API's <c>ProjectCode</c> validation deliberately rejects (it contains
+/// "/") — that case, plus <see cref="AddAndCommit"/> and the maintenance-file helpers (none of which
+/// are "manage" operations), still go through <c>podman exec</c>/<c>cp</c>.
 ///
 /// Environment overrides:
 ///   HGRESUME_PODMAN     container CLI (default "podman")
@@ -20,6 +25,9 @@ namespace HgResume.HttpTests;
 /// </summary>
 public sealed class ServerFixture : IAsyncLifetime
 {
+    // Shared with the -e HGRESUME_MANAGE_SECRET passed to `podman run` below.
+    private const string ManageSecret = "test-secret";
+
     private readonly string _podman = Env("HGRESUME_PODMAN", "podman");
     private readonly string _image = Env("HGRESUME_IMAGE", "hgresume-csharp:test");
     private readonly string _port = Env("HGRESUME_PORT", "8034");
@@ -32,10 +40,18 @@ public sealed class ServerFixture : IAsyncLifetime
     private readonly string _maintPath = Env("HGRESUME_MAINT_PATH", "/var/cache/hgresume/maintenance_message.txt");
 
     private bool _startedByUs;
+    private HttpClient? _manageHttp;
 
     public string ContainerName { get; private set; } = "";
     public string BaseUrl { get; private set; } = "";
     public ApiClient Client { get; private set; } = default!;
+
+    private HttpClient ManageHttp => _manageHttp ??= new HttpClient
+    {
+        BaseAddress = new Uri(BaseUrl),
+        Timeout = TimeSpan.FromSeconds(120),
+        DefaultRequestHeaders = { { "X-Manage-Secret", ManageSecret } },
+    };
 
     public async Task InitializeAsync()
     {
@@ -57,7 +73,7 @@ public sealed class ServerFixture : IAsyncLifetime
             // Clean up a stale container with the same name, if any.
             TryRun(_podman, "rm", "-f", ContainerName);
             Run(_podman, "run", "-d", "--name", ContainerName, "-p", $"{_port}:80",
-                "-e", "HGRESUME_MANAGE_SECRET=test-secret", _image);
+                "-e", $"HGRESUME_MANAGE_SECRET={ManageSecret}", _image);
             _startedByUs = true;
             BaseUrl = $"http://localhost:{_port}";
         }
@@ -68,6 +84,7 @@ public sealed class ServerFixture : IAsyncLifetime
 
     public Task DisposeAsync()
     {
+        _manageHttp?.Dispose();
         if (_startedByUs && Environment.GetEnvironmentVariable("HGRESUME_KEEP") is null)
         {
             TryRun(_podman, "logs", ContainerName); // surfaced in test output on failures
@@ -98,13 +115,38 @@ public sealed class ServerFixture : IAsyncLifetime
 
     // ---- repo/maintenance seeding ---------------------------------------------------------------
 
-    /// <summary>Extracts a fixture repo zip on the host into /var/vcs/public/&lt;repoId&gt;. Returns the repoId.</summary>
+    /// <summary>
+    /// Seeds /var/vcs/public/&lt;repoId&gt; from a fixture repo zip. Returns the repoId. Goes through
+    /// POST /api/manage/repos/{code}/finish-reset (the zip becomes the repo's .hg folder) unless
+    /// repoId isn't a valid ProjectCode (e.g. contains "/"; see
+    /// <see cref="MiscFacts.GetRevisions_SubDir_Works"/>) or HGRESUME_REPO_OWNER is set (a non-root
+    /// image with no manage API), in which case it falls back to extracting on the host and
+    /// `podman cp`-ing the result in.
+    /// </summary>
     public string SeedRepo(string zipName, string? repoId = null)
     {
         repoId ??= Path.GetFileNameWithoutExtension(zipName);
         string localZip = Path.Combine(_dataDir, zipName);
         if (!File.Exists(localZip)) throw new FileNotFoundException($"fixture not found: {localZip}");
 
+        if (repoId.Contains('/') || !string.IsNullOrEmpty(_repoOwner))
+        {
+            SeedRepoViaFilesystem(localZip, repoId);
+            return repoId;
+        }
+
+        using var content = new ByteArrayContent(File.ReadAllBytes(localZip));
+        using var resp = ManageHttp.PostAsync($"/api/manage/repos/{repoId}/finish-reset", content)
+            .GetAwaiter().GetResult();
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new Exception($"finish-reset for {repoId} failed: {(int)resp.StatusCode} {resp.ReasonPhrase}");
+        }
+        return repoId;
+    }
+
+    private void SeedRepoViaFilesystem(string localZip, string repoId)
+    {
         string extractDir = Path.Combine(Path.GetTempPath(), "hgresume-seed-" + Guid.NewGuid().ToString("N"));
         try
         {
@@ -123,23 +165,44 @@ public sealed class ServerFixture : IAsyncLifetime
             try { Directory.Delete(extractDir, recursive: true); }
             catch { /* best-effort temp cleanup */ }
         }
-        return repoId;
     }
 
-    public void RemoveRepo(string repoId) => Exec($"rm -rf /var/vcs/public/{repoId}");
+    public void RemoveRepo(string repoId)
+    {
+        if (repoId.Contains('/'))
+        {
+            Exec($"rm -rf /var/vcs/public/{repoId}");
+            return;
+        }
+
+        using var resp = ManageHttp.DeleteAsync($"/api/manage/repos/{repoId}").GetAwaiter().GetResult();
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new Exception($"delete repo {repoId} failed: {(int)resp.StatusCode}");
+        }
+    }
 
     /// <summary>Adds and commits a file into the given repo (mirrors the PHP addAndCheckInFile helper).</summary>
     public void AddAndCommit(string repoId, string filename, string content)
     {
-        string cmd = $"cd /var/vcs/public/{repoId} && printf '%s' '{content}' > {filename} && " +
+        string repoPath = RepoPath(repoId);
+        string cmd = $"cd {repoPath} && printf '%s' '{content}' > {filename} && " +
                      $"hg --config ui.username=system add {filename} && " +
                      $"hg --config ui.username=system commit -m 'added {filename}'";
         if (!string.IsNullOrEmpty(_repoOwner))
         {
-            cmd += $" && chown -R {_repoOwner}:{_repoOwner} /var/vcs/public/{repoId}";
+            cmd += $" && chown -R {_repoOwner}:{_repoOwner} {repoPath}";
         }
         Exec(cmd);
     }
+
+    /// <summary>
+    /// Repos with a slash in their id were seeded at that literal path (the SubDir path-traversal
+    /// test); everything else went through /api/manage, which nests repos one level under their
+    /// first character (see RepoManageService.PrefixRepoFilePath).
+    /// </summary>
+    private static string RepoPath(string repoId) =>
+        repoId.Contains('/') ? $"/var/vcs/public/{repoId}" : $"/var/vcs/public/{repoId[0]}/{repoId}";
 
     public void SetMaintenance(string message)
         => Exec($"printf '%s' '{message}' > {_maintPath}");

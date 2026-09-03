@@ -165,7 +165,13 @@ public static class ManageRepoEndpoints
             max.MaxRequestBodySize = null;
         }
 
-        await repos.FinishReset(projectCode, request.Body, cancellationToken);
+        // ZipArchive needs a seekable stream (to read the central directory), and request.Body is
+        // neither seekable nor safe to read synchronously, so buffer it first.
+        using var zipBuffer = new MemoryStream();
+        await request.Body.CopyToAsync(zipBuffer, cancellationToken);
+        zipBuffer.Position = 0;
+
+        await repos.FinishReset(projectCode, zipBuffer, cancellationToken);
         return TypedResults.NoContent();
     }
 

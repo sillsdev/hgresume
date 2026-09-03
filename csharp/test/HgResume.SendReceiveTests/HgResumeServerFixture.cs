@@ -11,6 +11,9 @@ namespace HgResume.SendReceiveTests;
 /// </summary>
 public sealed class HgResumeServerFixture : IAsyncLifetime
 {
+    // Shared with the -e HGRESUME_MANAGE_SECRET passed to `podman run` below.
+    private const string ManageSecret = "test-secret";
+
     private readonly string _cli = Env("HGRESUME_PODMAN", "podman");
     private readonly string _image = Env("HGRESUME_IMAGE", "hgresume-csharp:test");
     private readonly string _port = Env("HGRESUME_PORT", "8041");
@@ -24,7 +27,8 @@ public sealed class HgResumeServerFixture : IAsyncLifetime
         _container = "hgresume-sr-" + Environment.ProcessId;
         TryRun(_cli, "rm", "-f", _container);
         Run(_cli, "run", "-d", "--name", _container, "-p", $"{_port}:80",
-            "-e", "HGRESUME_MANAGE_SECRET=test-secret", _image);
+            "-e", $"HGRESUME_MANAGE_SECRET={ManageSecret}", _image);
+        _http.DefaultRequestHeaders.Add("X-Manage-Secret", ManageSecret);
         await WaitForReadyAsync();
     }
 
@@ -37,11 +41,20 @@ public sealed class HgResumeServerFixture : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    /// <summary>Creates an empty hg repo on the server for the given project code.</summary>
+    /// <summary>Creates an empty hg repo on the server for the given project code, via /api/manage.</summary>
     public void InitServerRepo(string code)
     {
-        Run(_cli, "exec", _container, "sh", "-lc",
-            $"rm -rf /var/vcs/public/{code} && hg init /var/vcs/public/{code}");
+        var delete = _http.DeleteAsync($"http://{BaseUrl}/api/manage/repos/{code}").GetAwaiter().GetResult();
+        if (!delete.IsSuccessStatusCode)
+        {
+            throw new Exception($"delete repo {code} failed: {(int)delete.StatusCode}");
+        }
+
+        var init = _http.PostAsync($"http://{BaseUrl}/api/manage/repos/{code}", null).GetAwaiter().GetResult();
+        if (!init.IsSuccessStatusCode)
+        {
+            throw new Exception($"init repo {code} failed: {(int)init.StatusCode}");
+        }
     }
 
     /// <summary>Returns the server's revision list ("hash:branch|...") for a repo, via the HTTP API.</summary>

@@ -15,8 +15,8 @@ public sealed class MiscFacts
     [Fact]
     public void GetRevisions_2BranchRepo_ReturnsTwoBranches()
     {
-        _fx.SeedRepo("sample2branchHgRepo.zip");
-        var r = Api.GetRevisions("sample2branchHgRepo", 0, 50);
+        _fx.SeedRepo("sample2branch-hg-repo.zip");
+        var r = Api.GetRevisions("sample2branch-hg-repo", 0, 50);
         Assert.Equal("SUCCESS", r.Status);
 
         var branches = new HashSet<string>();
@@ -32,7 +32,7 @@ public sealed class MiscFacts
     public void GetRevisions_SubDir_Works()
     {
         _fx.Exec("mkdir -p /var/vcs/public/s");
-        var repoId = _fx.SeedRepo("sampleHgRepo.zip", "s/sampleHgRepo");
+        var repoId = _fx.SeedRepo("sample-hg-repo.zip", "s/sample-hg-repo");
         var r = Api.GetRevisions(repoId, 0, 50);
         Assert.Equal("SUCCESS", r.Status);
     }
@@ -40,19 +40,19 @@ public sealed class MiscFacts
     [Fact]
     public void GetRevisions_BogusId_UnknownCode()
     {
-        _fx.SeedRepo("sampleHgRepo.zip");
+        _fx.SeedRepo("sample-hg-repo.zip");
         var r = Api.GetRevisions("fakeid", 0, 50);
         Assert.Equal("UNKNOWNID", r.Status);
     }
 
     [Theory]
-    [InlineData("../sampleHgRepo")]
+    [InlineData("../sample-hg-repo")]
     [InlineData("..")]
     [InlineData("foo/bar")]
     public void GetRevisions_PathTraversalRepoId_UnknownCode(string repoId)
     {
         // Even when a real repo exists under the search root, path segments must not escape it.
-        _fx.SeedRepo("sampleHgRepo.zip");
+        _fx.SeedRepo("sample-hg-repo.zip");
         var r = Api.GetRevisions(repoId, 0, 50);
         Assert.Equal("UNKNOWNID", r.Status);
     }
@@ -62,8 +62,8 @@ public sealed class MiscFacts
     [Fact]
     public void PushBundleChunk_PathTraversalRepoId_UnknownCode()
     {
-        _fx.SeedRepo("sampleHgRepo.zip");
-        var r = Api.PushBundleChunk("../sampleHgRepo", 10000, 0,
+        _fx.SeedRepo("sample-hg-repo.zip");
+        var r = Api.PushBundleChunk("../sample-hg-repo", 10000, 0,
             Encoding.UTF8.GetBytes("chunkData"), nameof(PushBundleChunk_PathTraversalRepoId_UnknownCode));
         Assert.Equal("UNKNOWNID", r.Status);
     }

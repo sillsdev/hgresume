@@ -447,11 +447,20 @@ public sealed class HgResumeApi
         foreach (var basePath in _config.RepoSearchPaths)
         {
             var fullBasePath = Path.GetFullPath(basePath);
-            var possibleRepoPath = Path.Combine(fullBasePath, repoId);
+            var flatPath = Path.Combine(fullBasePath, repoId);
 
-            if (possibleRepoPath.StartsWith(fullBasePath) && Directory.Exists(possibleRepoPath))
+            if (flatPath.StartsWith(fullBasePath) && Directory.Exists(flatPath))
             {
-                return possibleRepoPath;
+                return flatPath;
+            }
+
+            // LexBox/manage-API layout nests repos one level under their first character (e.g.
+            // {root}/s/sample-hg-repo, see RepoManageService.PrefixRepoFilePath). Repos LexBox
+            // provisions via /api/manage live there, so check it too before giving up.
+            var nestedPath = Path.Combine(fullBasePath, repoId[0].ToString(), repoId);
+            if (nestedPath.StartsWith(fullBasePath) && Directory.Exists(nestedPath))
+            {
+                return nestedPath;
             }
         }
         return "";
