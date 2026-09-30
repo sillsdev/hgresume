@@ -1,0 +1,47 @@
+@baseUrl = http://localhost:8034
+
+### Init an empty repo
+POST {{baseUrl}}/api/manage/repos/sample-project
+
+### Get lock / abandoned-transaction status
+GET {{baseUrl}}/api/manage/repos/sample-project
+
+### Copy a repo onto a new code
+POST {{baseUrl}}/api/manage/repos/sample-copy
+Content-Type: application/json
+
+{
+  "sourceCode": "sample-project"
+}
+
+### Backup a repo as a zip
+GET {{baseUrl}}/api/manage/repos/sample-project/backup
+
+### Soft-delete a repo
+POST {{baseUrl}}/api/manage/repos/sample-project/soft-delete
+Content-Type: application/json
+
+{
+  "suffix": "manual"
+}
+
+### Reset a repo (soft-delete + empty replacement)
+POST {{baseUrl}}/api/manage/repos/sample-project/reset
+
+### Finish reset by uploading a zip (raw body)
+POST {{baseUrl}}/api/manage/repos/sample-project/finish-reset
+Content-Type: application/zip
+
+< ./repo-backup.zip
+
+### Invalidate NFS dir cache
+POST {{baseUrl}}/api/manage/repos/sample-project/invalidate-dir-cache
+
+### Delete a repo if it exists
+DELETE {{baseUrl}}/api/manage/repos/sample-project
+
+### Dry-run cleanup of old reset backups
+POST {{baseUrl}}/api/manage/reset-backups/cleanup?dryRun=true
+
+### Invalid project code
+POST {{baseUrl}}/api/manage/repos/-bad

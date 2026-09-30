@@ -26,6 +26,8 @@ ENV ASPNETCORE_URLS=http://+:80
 ENV HGRESUME_CACHE_PATH=/var/cache/hgresume
 ENV HGRESUME_REPO_PATHS="/var/vcs/public;/var/vcs/private"
 ENV HGRESUME_MAINTENANCE_FILE=/var/cache/hgresume/maintenance_message.txt
+# /api/manage/* requires HGRESUME_MANAGE_SECRET to be set (the app refuses to start without it,
+# since ASPNETCORE_ENVIRONMENT isn't Development here). Set it via the deployment's secret store.
 
 EXPOSE 80
 VOLUME /var/cache/hgresume

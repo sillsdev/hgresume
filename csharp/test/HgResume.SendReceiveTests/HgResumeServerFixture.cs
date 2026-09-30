@@ -23,7 +23,8 @@ public sealed class HgResumeServerFixture : IAsyncLifetime
     {
         _container = "hgresume-sr-" + Environment.ProcessId;
         TryRun(_cli, "rm", "-f", _container);
-        Run(_cli, "run", "-d", "--name", _container, "-p", $"{_port}:80", _image);
+        Run(_cli, "run", "-d", "--name", _container, "-p", $"{_port}:80",
+            "-e", "HGRESUME_MANAGE_SECRET=test-secret", _image);
         await WaitForReadyAsync();
     }
 
