@@ -1,4 +1,4 @@
-namespace HgResume.SendReceiveTests;
+namespace HgResume.IntegrationTests;
 
 // Trimmed copies of the LexBox test models (backend/Testing/Services), with the LexBox server/API
 // coupling removed. Only the Resumable protocol is relevant here (that's what our hgresume serves).

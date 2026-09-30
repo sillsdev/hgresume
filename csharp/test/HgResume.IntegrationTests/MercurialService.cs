@@ -4,7 +4,7 @@ using Chorus.VcsDrivers.Mercurial;
 using SIL.Progress;
 using Xunit.Abstractions;
 
-namespace HgResume.SendReceiveTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>
 /// Drives the REAL Chorus resumable client (HgResumeTransport, via HgRepository) against our hgresume

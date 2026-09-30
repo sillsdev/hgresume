@@ -4,7 +4,7 @@ using FluentAssertions;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace HgResume.SendReceiveTests;
+namespace HgResume.IntegrationTests;
 
 // Mirrors LexBox's SendReceiveServiceTests.VerifyHgWorking: confirms the bundled Chorus Mercurial
 // is present and usable in this project before we exercise send/receive.

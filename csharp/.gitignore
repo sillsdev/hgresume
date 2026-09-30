@@ -4,6 +4,6 @@ obj/
 .idea/
 .vs/
 
-# Bundled Mercurial dropped into the SendReceive test project by SIL.Chorus.Mercurial at build time
-test/HgResume.SendReceiveTests/Mercurial/
-test/HgResume.SendReceiveTests/MercurialExtensions/
+# Bundled Mercurial dropped into the integration test project by SIL.Chorus.Mercurial at build time
+test/HgResume.IntegrationTests/Mercurial/
+test/HgResume.IntegrationTests/MercurialExtensions/

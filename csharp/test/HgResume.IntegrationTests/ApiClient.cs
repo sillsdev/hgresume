@@ -1,7 +1,7 @@
 using System.Net;
 using System.Text;
 
-namespace HgResume.HttpTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>Parsed HTTP response, exposing the X-HgR-* protocol headers the Chorus client reads.</summary>
 public sealed record ApiResponse(HttpStatusCode Http, IReadOnlyDictionary<string, string> Headers, byte[] Content)

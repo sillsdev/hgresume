@@ -1,4 +1,4 @@
-namespace HgResume.HttpTests;
+namespace HgResume.IntegrationTests;
 
 /// <summary>
 /// Client-side push/pull loops that mirror how Chorus's HgResumeTransport drives the protocol,
