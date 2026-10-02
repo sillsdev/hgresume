@@ -207,6 +207,13 @@ public sealed class HgResumeApi
             {
                 return Fail("invalid offset");
             }
+            // Clamp a client-supplied chunkSize to a configured cap. GetChunkAsync already bounds each
+            // read to the remaining bundle length, so this is cheap defense against an absurd value (and
+            // keeps offset + chunkSize from overflowing in the size checks below).
+            if (chunkSize > _config.ChunkSizeMax)
+            {
+                chunkSize = _config.ChunkSizeMax;
+            }
 
             var hg = new HgRunner(repoPath);
             if (!await hg.IsValidBaseAsync(baseHashes, ct))
@@ -248,13 +255,49 @@ public sealed class HgResumeApi
                         ["Error"] = "Cannot request data for bundle that doesnt exist yet",
                     });
                 }
-                // first pull request (offset == 0): make a new bundle
-                asyncRunner = waitForBundleToFinish
-                    ? await hg.MakeBundleAndWaitUntilFinishedAsync(sortedBase, bundleFilename, ct)
-                    : hg.MakeBundle(sortedBase, bundleFilename);
-                bundle.SetProp("tip", await hg.GetTipAsync(ct));
-                bundle.SetProp("repoId", repoId);
-                bundle.State = BundleHelper.State_Bundle;
+
+                // Concurrent-generation guard + crash recovery. A duplicate first-chunk retry can arrive
+                // before the .bundle file appears; without this it spawns a second `hg bundle` for the same
+                // transId. A generation is "in flight" if a background task in this process is still running
+                // it, or a lock file exists that is not yet old enough to be considered abandoned.
+                bool generationInFlight = asyncRunner.IsTrackedRunning() ||
+                    (asyncRunner.IsRunning() && !asyncRunner.IsStaleLock(_config.StaleBundleLockThreshold));
+
+                if (generationInFlight)
+                {
+                    // Someone else is already building this bundle. Don't respawn; poll it via State_Bundle.
+                    if (bundle.State != BundleHelper.State_Bundle &&
+                        bundle.State != BundleHelper.State_Downloading)
+                    {
+                        bundle.State = BundleHelper.State_Bundle;
+                    }
+                }
+                else
+                {
+                    // Reap a stale lock left by a generation this process no longer runs (API restarted
+                    // mid-bundle) so it can't deadlock the transaction, then respawn.
+                    if (asyncRunner.IsRunning())
+                    {
+                        asyncRunner.CleanUp();
+                    }
+
+                    // Bound respawns so a bundle that genuinely can't be produced fails fast with FAIL
+                    // instead of respawning hg forever (the OOM loop).
+                    int attempts = (int.TryParse(bundle.GetProp("genAttempts"), out var prev) ? prev : 0) + 1;
+                    if (attempts > _config.MaxBundleGenAttempts)
+                    {
+                        return Fail($"bundle generation failed after {attempts - 1} attempts");
+                    }
+                    bundle.SetProp("genAttempts", attempts.ToString());
+
+                    // first pull request (offset == 0): make a new bundle
+                    asyncRunner = waitForBundleToFinish
+                        ? await hg.MakeBundleAndWaitUntilFinishedAsync(sortedBase, bundleFilename, ct)
+                        : hg.MakeBundle(sortedBase, bundleFilename);
+                    bundle.SetProp("tip", await hg.GetTipAsync(ct));
+                    bundle.SetProp("repoId", repoId);
+                    bundle.State = BundleHelper.State_Bundle;
+                }
             }
 
             var response = new HgResumeResponse(HgResumeResponse.SUCCESS);

@@ -13,6 +13,13 @@ public sealed class HgRunner
     private static readonly Regex ParentMinusOne = new("parent:\\s*-1:", RegexOptions.Compiled);
     private static readonly Regex NotAMercurialBundle = new("abort:.*not a Mercurial bundle", RegexOptions.Compiled);
 
+    // A hg short (12-char) or full (40-char) node id. Anything else cannot be a base revision.
+    private static readonly Regex HexHash = new("^[0-9a-fA-F]{1,40}$", RegexOptions.Compiled);
+    // hg's "unknown revision" / "unknown revision or ambiguous" abort, meaning the hash simply isn't
+    // in this repo (an absent base) — as opposed to a corruption/lock error we must surface.
+    private static readonly Regex UnknownRevision =
+        new("abort:.*(unknown revision|ambiguous identifier|filtered revision)", RegexOptions.Compiled);
+
     public string RepoPath { get; }
 
     public HgRunner(string repoPath)
@@ -92,7 +99,12 @@ public sealed class HgRunner
     public AsyncRunner MakeBundle(IReadOnlyList<string> baseHashes, string bundleFilePath)
     {
         var args = new List<string> { "bundle" };
-        if (baseHashes.Count == 1 && baseHashes[0] == "0")
+        // An empty baseHashes list means the same thing as ["0"]: the client has no common base (it
+        // cleared its cache, or this is a first sync), so send everything via --all. Without this an
+        // empty list produced `hg bundle <file> -t v1` (no --base/--all) → hg aborts → FAIL → the client
+        // retries forever. For an empty repo --all yields NOCHANGE upstream; for a non-empty repo it
+        // yields a full clone. Both terminate.
+        if (baseHashes.Count == 0 || (baseHashes.Count == 1 && baseHashes[0] == "0"))
         {
             args.Add("--all");
             args.Add(bundleFilePath);
@@ -138,7 +150,11 @@ public sealed class HgRunner
 
     public async Task<List<string>> GetBranchTipsAsync(CancellationToken ct = default)
     {
-        var (branches, _) = await ProcessRunner.RunAsync(RepoPath, "hg", ["branches"], ct);
+        var (branches, branchesExit, branchesErr) = await ProcessRunner.RunAsync(RepoPath, "hg", ["branches"], ct);
+        if (branchesExit != 0)
+        {
+            throw new HgException($"command 'hg branches' failed (exit {branchesExit}): {Truncate(branchesErr)}");
+        }
         var revisionArray = new List<string>();
         foreach (var branch in branches)
         {
@@ -174,22 +190,35 @@ public sealed class HgRunner
         {
             throw new ValidationException("quantity parameter much be larger than 0");
         }
+        // Bound each query to the requested window instead of listing the whole history and paging in
+        // memory. `hg log -l N` returns the newest N changesets in reverse-revision order — the same
+        // prefix the unbounded log produced — so Skip(offset).Take(quantity) yields an identical result
+        // while keeping the cost O(offset + quantity) per call rather than O(history). offset is
+        // non-negative for every real caller; clamp defensively so a bogus negative offset can't ask hg
+        // for a negative limit.
+        int window = (offset > 0 ? offset : 0) + quantity;
         // ':' is illegal in branch names (it is used in tags) so we use it to split hash and branch
         string[] args = branch is null
-            ? new[] { "log", "--template", "{node|short}:{branches}\n" }
-            : new[] { "log", "-b", branch, "--template", "{node|short}:{branches}\n" };
+            ? new[] { "log", "-l", window.ToString(), "--template", "{node|short}:{branches}\n" }
+            : new[] { "log", "-b", branch, "-l", window.ToString(), "--template", "{node|short}:{branches}\n" };
 
-        var (output, _) = await ProcessRunner.RunAsync(RepoPath, "hg", args, ct);
+        var (output, logExit, logErr) = await ProcessRunner.RunAsync(RepoPath, "hg", args, ct);
+        if (logExit != 0)
+        {
+            // A real hg failure (corruption, stale lock, bad branch, fork-failure-under-load). Fail fast
+            // with the exit code and stderr rather than the old uninformative "command 'hg log' failed!".
+            throw new HgException($"command 'hg log' failed (exit {logExit}): {Truncate(logErr)}");
+        }
         if (output.Count == 0)
         {
-            var (tip, _) = await ProcessRunner.RunAsync(RepoPath, "hg",
+            var (tip, tipExit, tipErr) = await ProcessRunner.RunAsync(RepoPath, "hg",
                 ["tip", "--template", "{rev}:{branches}\n"], ct);
-            if (tip.Count == 1 && tip[0].StartsWith("-1"))
+            if (tipExit == 0 && tip.Count == 1 && tip[0].StartsWith("-1"))
             {
                 // Empty repo (hg init, zero changesets). At offset 0 we emit '0:<branch>' (from
                 // '-1:<branch>') as the sentinel callers expect; past offset 0 there is nothing more,
                 // so return empty. Returning the sentinel for every offset would make paginating
-                // callers (e.g. IsValidBase) loop forever, since they never see an empty page.
+                // callers loop forever, since they never see an empty page.
                 if (offset > 0)
                 {
                     return new List<string>();
@@ -197,47 +226,60 @@ public sealed class HgRunner
                 tip[0] = Regex.Replace(tip[0], "^-1", "0");
                 return tip;
             }
-            throw new HgException($"command 'hg log' failed!\n");
+            // hg log exited 0 with no output but this is not the empty-repo sentinel — surface it rather
+            // than silently returning empty.
+            throw new HgException(
+                $"command 'hg log' returned no revisions (hg tip exit {tipExit}): {Truncate(tipErr)}");
         }
         return output.Skip(offset).Take(quantity).ToList();
     }
 
+    /// <summary>
+    /// True if every requested hash is a real revision in this repo (the "0" sentinel is always valid).
+    /// Each hash is checked directly with `hg log -r <hash>` — O(k) in the number of hashes — rather
+    /// than paging the whole history looking for them (which was O(N) per page, O(N·k) overall, and
+    /// spun forever on an empty repo). Hashes are hex-validated and passed as a positional argument, so
+    /// there is no revset/shell injection.
+    /// </summary>
     public async Task<bool> IsValidBaseAsync(IReadOnlyList<string> hashes, CancellationToken ct = default)
     {
         if (hashes.Count == 1 && hashes[0] == "0")
         {
             return true; // special case indicating revision 0
         }
-        int foundHash = 0;
-        const int q = 200;
-        int i = 0;
-        while (foundHash < hashes.Count)
+        foreach (var hash in hashes)
         {
-            var revisions = await GetRevisionsAsync(i, q, ct);
-            if (revisions.Count == 0)
+            if (!await RevisionExistsAsync(hash, ct))
             {
-                return false; // paged past the last revision without matching every hash
+                return false;
             }
-            foreach (var hashAndBranch in revisions)
-            {
-                int colon = hashAndBranch.IndexOf(':');
-                string rev = colon >= 0 ? hashAndBranch.Substring(0, colon) : hashAndBranch;
-                if (hashes.Contains(rev))
-                {
-                    foundHash++;
-                    if (foundHash >= hashes.Count) break;
-                }
-            }
-            // A page shorter than the requested quantity means hg returned everything it had, so this
-            // was the last page. Stop rather than advancing the offset again: this guarantees the loop
-            // terminates even if GetRevisions ever returns a fixed non-empty page regardless of offset
-            // (the empty-repo '0:' sentinel bug, or any similar future quirk).
-            if (revisions.Count < q)
-            {
-                break;
-            }
-            i += q;
         }
-        return foundHash >= hashes.Count;
+        return true;
     }
+
+    private async Task<bool> RevisionExistsAsync(string hash, CancellationToken ct)
+    {
+        // Anything that is not a hg short/long node id can't be a base. Reject it here so it never
+        // reaches `hg log -r` as a revset expression.
+        if (!HexHash.IsMatch(hash))
+        {
+            return false;
+        }
+        var (output, exitCode, stderr) = await ProcessRunner.RunAsync(RepoPath, "hg",
+            ["log", "-r", hash, "--template", "{node|short}\n"], ct);
+        if (exitCode == 0)
+        {
+            return output.Count > 0;
+        }
+        // hg exits non-zero for an unknown/ambiguous revision (a legitimately absent base). Distinguish
+        // that from a genuine hg error (corruption, stale lock), which must surface rather than be
+        // reported as a merely-invalid base.
+        if (UnknownRevision.IsMatch(stderr))
+        {
+            return false;
+        }
+        throw new HgException($"command 'hg log -r' failed (exit {exitCode}): {Truncate(stderr)}");
+    }
+
+    private static string Truncate(string s) => s.Length > 500 ? s.Substring(0, 500) : s;
 }
