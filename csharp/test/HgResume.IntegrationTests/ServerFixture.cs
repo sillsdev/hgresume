@@ -31,6 +31,9 @@ namespace HgResume.IntegrationTests;
 ///   HGRESUME_BASE_URL   reuse an already-running server at this URL (with HGRESUME_CONTAINER)
 ///   HGRESUME_CONTAINER  name of the already-running container (informational only in this mode)
 ///   HGRESUME_KEEP       if set, do not stop/remove the container on teardown
+///   HGRESUME_HOST_PORT  publish the server on this host port instead of a random one. Set it to 80
+///                       for Chorus clients older than sillsdev/chorus#343, which drop the port from
+///                       the repo URL and always call the API on the default port.
 /// </summary>
 public sealed class ServerFixture : IAsyncLifetime
 {
@@ -95,9 +98,12 @@ public sealed class ServerFixture : IAsyncLifetime
             image = new DockerImage(_image);
         }
 
-        _container = new ContainerBuilder(image)
-            .WithName(ContainerName)
-            .WithPortBinding(ContainerPort, assignRandomHostPort: true)
+        string? hostPort = Environment.GetEnvironmentVariable("HGRESUME_HOST_PORT");
+        var builder = new ContainerBuilder(image).WithName(ContainerName);
+        builder = string.IsNullOrWhiteSpace(hostPort)
+            ? builder.WithPortBinding(ContainerPort, assignRandomHostPort: true)
+            : builder.WithPortBinding(ushort.Parse(hostPort), ContainerPort);
+        _container = builder
             .WithEnvironment("HGRESUME_MANAGE_SECRET", ManageSecret)
             .WithCleanUp(!keep)
             .WithWaitStrategy(Wait.ForUnixContainer()

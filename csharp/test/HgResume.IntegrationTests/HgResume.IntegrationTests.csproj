@@ -21,16 +21,56 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
-    <!-- SIL.Chorus.Mercurial drops the bundled hg here at build time -->
-    <Mercurial4ChorusDestDir>$(MSBuildProjectDirectory)</Mercurial4ChorusDestDir>
     <NoWarn>$(NoWarn);NU1701;NU1902;NU1903</NoWarn>
+    <!--
+      Which Chorus client the send/receive tests drive; CI runs every one (dotnet test -p:ChorusClient=hg3):
+        pinned  the last LibChorus before the resumable transport moved from HttpWebRequest to
+                HttpClient (sillsdev/chorus#399), with Mercurial 6. The default.
+        latest  the newest LibChorus, Mercurial and SIL.Core on NuGet.
+        hg3     an old LibChorus with Mercurial 3, as LexBox tested before it moved to Mercurial 6.
+                Its Linux hg runs under /usr/bin/python2.
+      Each client gets its own hg drop and output dir, so switching between them never mixes hg files.
+    -->
+    <ChorusClient Condition="'$(ChorusClient)' == ''">pinned</ChorusClient>
+    <OutputPath>bin/$(Configuration)/$(ChorusClient)/</OutputPath>
+    <!-- SIL.Chorus.Mercurial drops the bundled hg here at build time -->
+    <Mercurial4ChorusDestDir>$(MSBuildProjectDirectory)/obj/hg/$(ChorusClient)</Mercurial4ChorusDestDir>
   </PropertyGroup>
+
+  <Choose>
+    <When Condition="'$(ChorusClient)' == 'pinned'">
+      <PropertyGroup>
+        <LibChorusVersion>6.0.0-beta0064</LibChorusVersion>
+        <ChorusMercurialVersion>6.5.1.43</ChorusMercurialVersion>
+        <SilCoreVersion>17.0.0</SilCoreVersion>
+      </PropertyGroup>
+    </When>
+    <When Condition="'$(ChorusClient)' == 'latest'">
+      <PropertyGroup>
+        <LibChorusVersion>*-*</LibChorusVersion>
+        <ChorusMercurialVersion>*</ChorusMercurialVersion>
+        <SilCoreVersion>*-*</SilCoreVersion>
+      </PropertyGroup>
+    </When>
+    <When Condition="'$(ChorusClient)' == 'hg3'">
+      <PropertyGroup>
+        <LibChorusVersion>6.0.0-beta0041</LibChorusVersion>
+        <ChorusMercurialVersion>3.0.3.11</ChorusMercurialVersion>
+        <SilCoreVersion>12.0.0</SilCoreVersion>
+      </PropertyGroup>
+    </When>
+  </Choose>
+
+  <Target Name="CheckChorusClient" BeforeTargets="Restore;CollectPackageReferences">
+    <Error Condition="'$(LibChorusVersion)' == ''"
+           Text="Unknown ChorusClient '$(ChorusClient)'; use pinned, latest or hg3." />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Testcontainers" Version="4.14.0" />
-    <PackageReference Include="SIL.Chorus.LibChorus" Version="6.0.0-beta0064" />
-    <PackageReference Include="SIL.Chorus.Mercurial" Version="6.5.1.43" />
-    <PackageReference Include="SIL.Core" Version="17.0.0" />
+    <PackageReference Include="SIL.Chorus.LibChorus" Version="$(LibChorusVersion)" />
+    <PackageReference Include="SIL.Chorus.Mercurial" Version="$(ChorusMercurialVersion)" />
+    <PackageReference Include="SIL.Core" Version="$(SilCoreVersion)" />
     <PackageReference Include="FluentAssertions" Version="7.0.0-alpha.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -47,9 +87,9 @@
 
   <!--
     SIL.Chorus.Mercurial's CopyFiles target drops the platform hg (Mercurial/) and the cross-platform
-    fixutf8 extension (MercurialExtensions/, from runtimes/any) into the project dir during Build.
+    fixutf8 extension (MercurialExtensions/, from runtimes/any) into $(Mercurial4ChorusDestDir) during Build.
     That happens after project evaluation, so a static <Content Include> glob misses the files on a
-    clean build. Stage them into the output dir here, after CopyFiles has populated the project dir,
+    clean build. Stage them into the output dir here, after CopyFiles has populated it,
     so Chorus finds MercurialExtensions/fixutf8 at runtime (it resolves it relative to the test
     assembly). On Linux the linux-x64 hg is already copied to output by NuGet's runtime-asset handling
     (VerifyHgWorking confirms it), so only MercurialExtensions needs staging there; the win hg has no
@@ -57,8 +97,8 @@
   -->
   <Target Name="StageMercurialForChorus" AfterTargets="Build">
     <ItemGroup>
-      <_HgExtDrop Include="$(MSBuildProjectDirectory)/MercurialExtensions/**" />
-      <_HgBinDrop Include="$(MSBuildProjectDirectory)/Mercurial/**"
+      <_HgExtDrop Include="$(Mercurial4ChorusDestDir)/MercurialExtensions/**" />
+      <_HgBinDrop Include="$(Mercurial4ChorusDestDir)/Mercurial/**"
                   Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
     </ItemGroup>
     <Copy SourceFiles="@(_HgExtDrop)"
