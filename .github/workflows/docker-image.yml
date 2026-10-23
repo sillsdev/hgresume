@@ -12,13 +12,110 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-test-push:
-    name: Build image, run tests, then push
+  # Build the amd64 image once and hand it to every test leg as an artifact (a multi-arch image can't
+  # be loaded/run directly). The push job reuses this build's cache, so amd64 is not compiled twice.
+  build:
+    name: Build image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build amd64 image
+        uses: docker/build-push-action@v7
+        with:
+          context: csharp
+          file: csharp/Dockerfile
+          platforms: linux/amd64
+          tags: hgresume-csharp:test
+          outputs: type=docker,dest=${{ runner.temp }}/hgresume-image.tar
+          cache-to: type=gha,mode=max
+          cache-from: type=gha
+
+      - name: Upload image
+        uses: actions/upload-artifact@v7
+        with:
+          name: hgresume-image
+          path: ${{ runner.temp }}/hgresume-image.tar
+          retention-days: 1
+
+  # Run the integration tests against the image once per Chorus client (see ChorusClient in
+  # HgResume.IntegrationTests.csproj). The HTTP-level tests don't depend on the client, so only the
+  # pinned leg runs them; the other legs run just the tests that drive the real Chorus client.
+  test:
+    name: Integration tests (${{ matrix.client }} Chorus)
+    needs: build
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - client: pinned
+            filter: ''
+          - client: latest
+            filter: FullyQualifiedName~SendReceiveTests|FullyQualifiedName~VerifyHgWorking
+          # Chorus this old drops the port from the repo URL, so the server has to be on port 80.
+          - client: hg3
+            filter: FullyQualifiedName~SendReceiveTests|FullyQualifiedName~VerifyHgWorking
+            host-port: '80'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Download image
+        uses: actions/download-artifact@v8
+        with:
+          name: hgresume-image
+          path: ${{ runner.temp }}
+
+      - name: Load image
+        run: docker load --input "${{ runner.temp }}/hgresume-image.tar"
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
+
+      # The Mercurial 3 bundle's Linux hg is a #!/usr/bin/python2 script, and ubuntu-latest has no
+      # Python 2 (same setup as LexBox's integration-test.yaml).
+      - name: Set up Python 2 for Mercurial 3
+        id: python
+        if: matrix.client == 'hg3'
+        uses: MatteoH2O1999/setup-python@v6
+        with:
+          python-version: '2.7.18'
+          cache-build: true
+          allow-build: allow
+
+      - name: Link python2
+        if: matrix.client == 'hg3'
+        run: sudo ln -s "${{ steps.python.outputs.python-path }}" /usr/bin/python2
+
+      - name: Run integration tests against the image
+        working-directory: csharp
+        env:
+          # The test fixture drives the pre-built image itself via Testcontainers (against the
+          # runner's local Docker daemon), so we skip the fixture's own build step.
+          HGRESUME_IMAGE: hgresume-csharp:test
+          HGRESUME_SKIP_BUILD: '1'
+          HGRESUME_HOST_PORT: ${{ matrix.host-port }}
+          TEST_FILTER: ${{ matrix.filter }}
+        run: |
+          args=(test/HgResume.IntegrationTests/HgResume.IntegrationTests.csproj
+            "-p:ChorusClient=${{ matrix.client }}" --logger "console;verbosity=normal")
+          if [ -n "$TEST_FILTER" ]; then args+=(--filter "$TEST_FILTER"); fi
+          dotnet test "${args[@]}"
+
+  push:
+    name: Build and push multi-arch image
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -47,34 +144,6 @@ jobs:
             type=ref,event=pr
             type=raw,value=${{ steps.version.outputs.value }},enable=${{ github.event_name != 'pull_request' }}
 
-      # Build the amd64 image and load it into the local Docker daemon so the test fixtures can run it
-      # as a container (a multi-arch image can't be loaded/run directly). The multi-arch push step below
-      # reuses this build's cache, so amd64 is not compiled twice.
-      - name: Build and export to Docker (amd64)
-        uses: docker/build-push-action@v7
-        with:
-          context: csharp
-          file: csharp/Dockerfile
-          load: true
-          platforms: linux/amd64
-          tags: hgresume-csharp:test
-          cache-to: type=gha,mode=max
-          cache-from: type=gha
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@v6
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Run integration tests (HTTP-level + real Chorus client) against the image
-        working-directory: csharp
-        env:
-          # The test fixture drives the pre-built image itself via Testcontainers (against the
-          # runner's local Docker daemon), so we skip the fixture's own build step.
-          HGRESUME_IMAGE: hgresume-csharp:test
-          HGRESUME_SKIP_BUILD: '1'
-        run: dotnet test test/HgResume.IntegrationTests/HgResume.IntegrationTests.csproj --logger "console;verbosity=normal"
-
       - name: Log in to the Container registry
         # Fork PRs get a read-only GITHUB_TOKEN; skip login/push so the job still builds without a 403.
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -84,7 +153,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Multi-arch build + push. amd64 layers come from the cache populated above (no recompile); only
+      # Multi-arch build + push. amd64 layers come from the build job's cache (no recompile); only
       # arm64 is built here. Push is gated the same way as login.
       - name: Build and push Docker image (C#)
         uses: docker/build-push-action@v7

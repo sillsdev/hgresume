@@ -28,6 +28,14 @@ public sealed class HgResumeResponse
     public byte[] Content { get; set; }
     public int Version { get; set; }
 
+    /// <summary>
+    /// A region of a file to send as the body instead of <see cref="Content"/>, so a bundle chunk of any
+    /// size goes out without first being read into memory. Null when the body is <see cref="Content"/>.
+    /// </summary>
+    public FileRegion? BodyFile { get; set; }
+
+    public sealed record FileRegion(string Path, long Offset, long Count);
+
     public HgResumeResponse(int code, Dictionary<string, string>? values = null, byte[]? content = null,
         int version = ApiConfig.ApiVersion)
     {
