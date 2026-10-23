@@ -277,14 +277,14 @@ public sealed class HgResumeApi
                     {
                         if (CanGetChunkBelowBundleSize(bundleFilename, chunkSize, offset))
                         {
-                            byte[] data = await GetChunkAsync(bundleFilename, chunkSize, offset, ct);
+                            var data = GetChunkRegion(bundleFilename, chunkSize, offset);
                             response.Values = new Dictionary<string, string>
                             {
                                 ["bundleSize"] = new FileInfo(bundleFilename).Length.ToString(),
-                                ["chunkSize"] = data.Length.ToString(),
+                                ["chunkSize"] = data.Count.ToString(),
                                 ["transId"] = transId,
                             };
-                            response.Content = data;
+                            response.BodyFile = data;
                             return response; // break out of loop and switch (PHP: break 2)
                         }
                         await Task.Delay(2000, ct);
@@ -293,15 +293,15 @@ public sealed class HgResumeApi
                     break;
 
                 case BundleHelper.State_Downloading:
-                    byte[] chunk = await GetChunkAsync(bundleFilename, chunkSize, offset, ct);
+                    var chunk = GetChunkRegion(bundleFilename, chunkSize, offset);
                     long size = new FileInfo(bundleFilename).Length;
                     response.Values = new Dictionary<string, string>
                     {
                         ["bundleSize"] = size.ToString(),
-                        ["chunkSize"] = chunk.Length.ToString(),
+                        ["chunkSize"] = chunk.Count.ToString(),
                         ["transId"] = transId,
                     };
-                    response.Content = chunk;
+                    response.BodyFile = chunk;
                     if (offset > size)
                     {
                         throw new ValidationException(
@@ -329,28 +329,16 @@ public sealed class HgResumeApi
         return fi.Exists && offset + chunkSize < fi.Length;
     }
 
-    private static async Task<byte[]> GetChunkAsync(string filename, int chunkSize, int offset,
-        CancellationToken ct)
+    /// <summary>
+    /// The part of the bundle file to send for a chunk request: from offset, the smaller of chunkSize and
+    /// what the file holds past the offset right now (empty if nothing). It is sent straight from the
+    /// file (see RestDispatcher), so the chunk is never held in memory, whatever its size.
+    /// </summary>
+    private static HgResumeResponse.FileRegion GetChunkRegion(string filename, int chunkSize, int offset)
     {
         var fi = new FileInfo(filename);
-        if (!fi.Exists || offset >= fi.Length)
-        {
-            return Array.Empty<byte>();
-        }
-        await using var fs = new FileStream(filename, FileMode.Open, FileAccess.Read, FileShare.ReadWrite,
-            bufferSize: 4096, FileOptions.Asynchronous);
-        fs.Seek(offset, SeekOrigin.Begin);
-        int toRead = (int)Math.Min(chunkSize, fs.Length - offset);
-        var buffer = new byte[toRead];
-        int read = 0;
-        while (read < toRead)
-        {
-            int n = await fs.ReadAsync(buffer.AsMemory(read, toRead - read), ct);
-            if (n == 0) break;
-            read += n;
-        }
-        if (read < toRead) Array.Resize(ref buffer, read);
-        return buffer;
+        long available = fi.Exists ? fi.Length - offset : 0;
+        return new HgResumeResponse.FileRegion(filename, offset, Math.Max(0, Math.Min(chunkSize, available)));
     }
 
     // ---- misc -----------------------------------------------------------------------------------
