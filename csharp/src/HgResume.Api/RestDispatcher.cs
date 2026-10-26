@@ -145,12 +145,20 @@ public sealed class RestDispatcher
         }
         res.ContentType = "application/octet-stream";
 
-        if (response.Content.Length > 0)
+        // Set Content-Length explicitly (as the PHP RestServer did). The Chorus client reads the
+        // body with a hand-rolled reader that returns EMPTY when there is no Content-Length header
+        // (it never falls back to chunked/Transfer-Encoding), so relying on Kestrel's default
+        // chunked encoding silently breaks getRevisions and pullBundleChunk for the real client.
+        if (response.BodyFile is { Count: > 0 } file)
         {
-            // Set Content-Length explicitly (as the PHP RestServer did). The Chorus client reads the
-            // body with a hand-rolled reader that returns EMPTY when there is no Content-Length header
-            // (it never falls back to chunked/Transfer-Encoding), so relying on Kestrel's default
-            // chunked encoding silently breaks getRevisions and pullBundleChunk for the real client.
+            // Sent straight from the file (sendfile where the platform has it), so a chunk as big as
+            // the whole bundle costs no memory for the whole time a slow client takes to download it.
+            // The file is opened with FileShare.ReadWrite, so a bundle hg is still writing can be read.
+            res.ContentLength = file.Count;
+            await res.SendFileAsync(file.Path, file.Offset, file.Count, ct);
+        }
+        else if (response.Content.Length > 0)
+        {
             res.ContentLength = response.Content.Length;
             await res.Body.WriteAsync(response.Content, ct);
         }

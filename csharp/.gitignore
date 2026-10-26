@@ -4,6 +4,3 @@ obj/
 .idea/
 .vs/
 
-# Bundled Mercurial dropped into the integration test project by SIL.Chorus.Mercurial at build time
-test/HgResume.IntegrationTests/Mercurial/
-test/HgResume.IntegrationTests/MercurialExtensions/
