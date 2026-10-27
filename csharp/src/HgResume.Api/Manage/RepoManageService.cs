@@ -216,7 +216,7 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
     public static partial Regex ResetProjectsRegex();
 
     /// <summary>
-    /// Deletes all files and folders in the repo folder except for .hg.
+    /// Deletes all files and folders in the repo folder except for .hg, and drops .hg/hgrc.
     /// </summary>
     private static async Task CleanupRepoFolder(DirectoryInfo repoDir, CancellationToken cancellationToken)
     {
@@ -224,7 +224,13 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
         {
             foreach (var info in repoDir.EnumerateFileSystemInfos())
             {
-                if (info.Name == ".hg") continue;
+                if (info.Name == ".hg")
+                {
+                    // Mercurial would trust an uploaded hgrc (hooks, extensions) on the server, and nothing here needs one.
+                    if (info is DirectoryInfo hg)
+                        foreach (var hgrc in hg.EnumerateFiles("hgrc")) hgrc.Delete();
+                    continue;
+                }
                 if (info is DirectoryInfo dir) dir.Delete(true);
                 else info.Delete();
             }
