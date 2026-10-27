@@ -145,7 +145,7 @@ public sealed class RepoManageServiceTests : IDisposable
         Directory.CreateDirectory(Path.Combine(RepoPath("dest-repo"), ".hg", "store"));
         File.WriteAllText(Path.Combine(RepoPath("dest-repo"), ".hg", "store", "00changelog.i"), "not-empty");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _svc.CopyRepo("source-repo", "dest-repo"));
+        await Assert.ThrowsAsync<AlreadyExistsException>(() => _svc.CopyRepo("source-repo", "dest-repo"));
     }
 
     [Fact]

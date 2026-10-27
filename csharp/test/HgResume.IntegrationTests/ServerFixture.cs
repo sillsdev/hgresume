@@ -149,14 +149,31 @@ public sealed class ServerFixture : IAsyncLifetime
             return repoId;
         }
 
-        using var content = new ByteArrayContent(File.ReadAllBytes(localZip));
-        using var resp = ManageHttp.PostAsync($"/api/manage/repos/{repoId}/finish-reset", content)
+        FinishReset(repoId, File.ReadAllBytes(localZip));
+        return repoId;
+    }
+
+    /// <summary>Replaces the repo with the contents of a zip, via POST /api/manage/repos/{code}/finish-reset.</summary>
+    public void FinishReset(string code, byte[] zip)
+    {
+        using var content = new ByteArrayContent(zip);
+        using var resp = ManageHttp.PostAsync($"/api/manage/repos/{code}/finish-reset", content)
             .GetAwaiter().GetResult();
         if (!resp.IsSuccessStatusCode)
         {
-            throw new Exception($"finish-reset for {repoId} failed: {(int)resp.StatusCode} {resp.ReasonPhrase}");
+            throw new Exception($"finish-reset for {code} failed: {(int)resp.StatusCode} {resp.ReasonPhrase}");
         }
-        return repoId;
+    }
+
+    /// <summary>Downloads the repo as a zip, via GET /api/manage/repos/{code}/backup.</summary>
+    public byte[] DownloadBackup(string code)
+    {
+        using var resp = ManageHttp.GetAsync($"/api/manage/repos/{code}/backup").GetAwaiter().GetResult();
+        if (!resp.IsSuccessStatusCode)
+        {
+            throw new Exception($"backup of {code} failed: {(int)resp.StatusCode} {resp.ReasonPhrase}");
+        }
+        return resp.Content.ReadAsByteArrayAsync().GetAwaiter().GetResult();
     }
 
     private void SeedRepoViaFilesystem(string localZip, string repoId)

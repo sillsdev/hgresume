@@ -79,7 +79,7 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
         var repoDirectory = new DirectoryInfo(PrefixRepoFilePath(destCode));
         if (repoDirectory.Exists && RepoHasCommits(repoDirectory.FullName))
         {
-            throw new InvalidOperationException($"Destination repo {destCode} already exists and is not empty");
+            throw new AlreadyExistsException($"Destination repo {destCode} already exists and is not empty");
         }
 
         await Task.Run(() =>
@@ -110,10 +110,9 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
             return null;
         }
 
-        return new((stream, token) => Task.Run(() =>
-        {
-            ZipFile.CreateFromDirectory(repoPath, stream, CompressionLevel.Fastest, includeBaseDirectory: false);
-        }, token));
+        // The endpoint streams into Kestrel's response body, so keep the writes async (see ManageRepoEndpoints.BackupRepo)
+        return new((stream, token) =>
+            ZipFile.CreateFromDirectoryAsync(repoPath, stream, CompressionLevel.Fastest, includeBaseDirectory: false, token));
     }
 
     public async Task ResetRepo(ProjectCode code, CancellationToken cancellationToken = default)
