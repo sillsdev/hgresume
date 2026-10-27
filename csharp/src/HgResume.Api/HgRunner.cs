@@ -13,8 +13,9 @@ public sealed class HgRunner
     private static readonly Regex ParentMinusOne = new("parent:\\s*-1:", RegexOptions.Compiled);
     private static readonly Regex NotAMercurialBundle = new("abort:.*not a Mercurial bundle", RegexOptions.Compiled);
 
-    // A hg short (12-char) or full (40-char) node id. Anything else cannot be a base revision.
-    private static readonly Regex HexHash = new("^[0-9a-fA-F]{1,40}$", RegexOptions.Compiled);
+    // A hg node id: at least the 12-char short form, up to the full 40 chars. The lower bound keeps
+    // short digit strings like "0" or "3" out, since `hg log -r` would read those as revision numbers.
+    private static readonly Regex HexHash = new("^[0-9a-fA-F]{12,40}$", RegexOptions.Compiled);
     // hg's "unknown revision" / "unknown revision or ambiguous" abort, meaning the hash simply isn't
     // in this repo (an absent base) — as opposed to a corruption/lock error we must surface.
     private static readonly Regex UnknownRevision =
@@ -229,7 +230,7 @@ public sealed class HgRunner
             // hg log exited 0 with no output but this is not the empty-repo sentinel — surface it rather
             // than silently returning empty.
             throw new HgException(
-                $"command 'hg log' returned no revisions (hg tip exit {tipExit}): {Truncate(tipErr)}");
+                $"command 'hg log' returned no revisions (hg tip exit code {tipExit}): {Truncate(tipErr)}");
         }
         return output.Skip(offset).Take(quantity).ToList();
     }
@@ -281,5 +282,5 @@ public sealed class HgRunner
         throw new HgException($"command 'hg log -r' failed (exit {exitCode}): {Truncate(stderr)}");
     }
 
-    private static string Truncate(string s) => s.Length > 500 ? s.Substring(0, 500) : s;
+    private static string Truncate(string s) => s.Length > 4096 ? s.Substring(0, 4096) : s;
 }
