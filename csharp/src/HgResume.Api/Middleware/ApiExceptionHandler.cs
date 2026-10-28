@@ -13,7 +13,6 @@ internal sealed class ApiExceptionHandler(ILogger<ApiExceptionHandler> logger) :
         var (statusCode, title, detail) = exception switch
         {
             AlreadyExistsException => (StatusCodes.Status409Conflict, "Conflict", exception.Message),
-            InvalidOperationException => (StatusCodes.Status409Conflict, "Conflict", exception.Message),
             DirectoryNotFoundException => (StatusCodes.Status404NotFound, "Not Found", exception.Message),
             ProjectResetException reset => (StatusCodes.Status400BadRequest, reset.ErrorCode, reset.Message),
             ArgumentException => (StatusCodes.Status400BadRequest, "Bad Request", exception.Message),

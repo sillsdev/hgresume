@@ -128,12 +128,18 @@ public static class ManageRepoEndpoints
 
     private static Results<PushStreamHttpResult, NotFound, ValidationProblem> BackupRepo(
         string code,
+        HttpContext httpContext,
         IRepoManageService repos,
         CancellationToken cancellationToken)
     {
         if (!TryCode(code, out var projectCode, out var error)) return error;
         var executor = repos.BackupRepo(projectCode);
         if (executor is null) return TypedResults.NotFound();
+
+        // Even ZipFile.CreateFromDirectoryAsync flushes each entry's DeflateStream synchronously when it's disposed,
+        // which Kestrel rejects by default. The bulk of the zip is still written asynchronously.
+        var bodyControl = httpContext.Features.Get<IHttpBodyControlFeature>();
+        if (bodyControl is not null) bodyControl.AllowSynchronousIO = true;
 
         return TypedResults.Stream(
             stream => executor.ExecuteBackup(stream, cancellationToken),

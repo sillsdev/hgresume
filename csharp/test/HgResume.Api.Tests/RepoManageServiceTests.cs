@@ -89,6 +89,28 @@ public sealed class RepoManageServiceTests : IDisposable
         Assert.Equal(Path.Join(".hg", "important-file.bin"), files[0]);
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("unzip-test/")]
+    public async Task FinishResetDropsUploadedHgrc(string prefix)
+    {
+        var code = new ProjectCode("unzip-test");
+        await _svc.InitRepo(code);
+
+        using var stream = new MemoryStream();
+        using (var zipArchive = new ZipArchive(stream, ZipArchiveMode.Create, true))
+        {
+            CreateSimpleEntry(zipArchive, prefix + ".hg/important-file.bin");
+            CreateSimpleEntry(zipArchive, prefix + ".hg/hgrc");
+        }
+        stream.Position = 0;
+        await _svc.FinishReset(code, stream);
+
+        var hgPath = Path.Combine(RepoPath("unzip-test"), ".hg");
+        Assert.True(File.Exists(Path.Combine(hgPath, "important-file.bin")));
+        Assert.False(File.Exists(Path.Combine(hgPath, "hgrc")));
+    }
+
     [Fact]
     public async Task ThrowsIfNoHgFolderIsFound()
     {
@@ -123,7 +145,7 @@ public sealed class RepoManageServiceTests : IDisposable
         Directory.CreateDirectory(Path.Combine(RepoPath("dest-repo"), ".hg", "store"));
         File.WriteAllText(Path.Combine(RepoPath("dest-repo"), ".hg", "store", "00changelog.i"), "not-empty");
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => _svc.CopyRepo("source-repo", "dest-repo"));
+        await Assert.ThrowsAsync<AlreadyExistsException>(() => _svc.CopyRepo("source-repo", "dest-repo"));
     }
 
     [Fact]

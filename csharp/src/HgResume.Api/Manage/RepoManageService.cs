@@ -79,7 +79,7 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
         var repoDirectory = new DirectoryInfo(PrefixRepoFilePath(destCode));
         if (repoDirectory.Exists && RepoHasCommits(repoDirectory.FullName))
         {
-            throw new InvalidOperationException($"Destination repo {destCode} already exists and is not empty");
+            throw new AlreadyExistsException($"Destination repo {destCode} already exists and is not empty");
         }
 
         await Task.Run(() =>
@@ -110,10 +110,9 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
             return null;
         }
 
-        return new((stream, token) => Task.Run(() =>
-        {
-            ZipFile.CreateFromDirectory(repoPath, stream, CompressionLevel.Fastest, includeBaseDirectory: false);
-        }, token));
+        // The endpoint streams into Kestrel's response body, so keep the writes async (see ManageRepoEndpoints.BackupRepo)
+        return new((stream, token) =>
+            ZipFile.CreateFromDirectoryAsync(repoPath, stream, CompressionLevel.Fastest, includeBaseDirectory: false, token));
     }
 
     public async Task ResetRepo(ProjectCode code, CancellationToken cancellationToken = default)
@@ -216,7 +215,7 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
     public static partial Regex ResetProjectsRegex();
 
     /// <summary>
-    /// Deletes all files and folders in the repo folder except for .hg.
+    /// Deletes all files and folders in the repo folder except for .hg, and drops .hg/hgrc.
     /// </summary>
     private static async Task CleanupRepoFolder(DirectoryInfo repoDir, CancellationToken cancellationToken)
     {
@@ -224,7 +223,13 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
         {
             foreach (var info in repoDir.EnumerateFileSystemInfos())
             {
-                if (info.Name == ".hg") continue;
+                if (info.Name == ".hg")
+                {
+                    // Mercurial would trust an uploaded hgrc (hooks, extensions) on the server, and nothing here needs one.
+                    if (info is DirectoryInfo hg)
+                        foreach (var hgrc in hg.EnumerateFiles("hgrc")) hgrc.Delete();
+                    continue;
+                }
                 if (info is DirectoryInfo dir) dir.Delete(true);
                 else info.Delete();
             }
