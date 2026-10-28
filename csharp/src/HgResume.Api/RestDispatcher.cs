@@ -64,7 +64,11 @@ public sealed class RestDispatcher
                     ct);
 
             case "pullBundleChunk":
-                RequireParams(methodName, query, "repoId", "baseHashes", "offset", "chunkSize", "transId");
+                // baseHashes is intentionally NOT required: a client that clears its revisioncache re-sends
+                // pullBundleChunk with no baseHashes. Rejecting that with FAIL (400) made the client — which
+                // retries all 400s — loop forever (the prod DDoS). BaseHashes(query) already yields [] when
+                // absent, which MakeBundle/IsValidBase treat as a full clone ("--all") that terminates.
+                RequireParams(methodName, query, "repoId", "offset", "chunkSize", "transId");
                 return _api.PullBundleChunkAsync(
                     Str(query, "repoId"),
                     BaseHashes(query),

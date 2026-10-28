@@ -98,6 +98,35 @@ public sealed class AsyncRunner
 
     public bool IsRunning() => File.Exists(_lockFile);
 
+    /// <summary>
+    /// True when this lock is backed by a background task still running in THIS process. Survives as a
+    /// real liveness signal (unlike a bare lock file, which also persists across a process restart that
+    /// killed the generation). Used to tell an in-flight bundle from a dead lock left by a crash.
+    /// </summary>
+    public bool IsTrackedRunning() => Running.ContainsKey(_lockFile);
+
+    /// <summary>
+    /// True when a lock file exists for a generation this process is NOT running (not in <see
+    /// cref="Running"/>) and it was last written longer than <paramref name="threshold"/> ago — i.e. a
+    /// generation abandoned by a crash/restart. Such a lock must be cleaned up and respawned rather than
+    /// polled forever. A lock this process IS running is never stale regardless of age.
+    /// </summary>
+    public bool IsStaleLock(TimeSpan threshold)
+    {
+        if (!File.Exists(_lockFile) || Running.ContainsKey(_lockFile))
+        {
+            return false;
+        }
+        try
+        {
+            return DateTime.UtcNow - File.GetLastWriteTimeUtc(_lockFile) > threshold;
+        }
+        catch
+        {
+            return false; // if we can't stat it, don't treat it as reapable
+        }
+    }
+
     public async Task<bool> IsCompleteAsync(CancellationToken ct = default)
     {
         if (!File.Exists(_lockFile))
