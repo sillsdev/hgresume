@@ -25,6 +25,9 @@ builder.Services.AddSingleton<RestDispatcher>();
 builder.Services.AddSingleton<RepoManageService>();
 builder.Services.AddSingleton<IRepoManageService>(sp => sp.GetRequiredService<RepoManageService>());
 builder.Services.AddHostedService(sp => sp.GetRequiredService<RepoManageService>());
+// Reaps abandoned .bundle/.metadata/.async_run/.incoming cache artifacts a looping or vanished client
+// would otherwise leak forever (prod left 1,258 .async_run locks).
+builder.Services.AddHostedService<CacheGarbageCollector>();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddValidation();

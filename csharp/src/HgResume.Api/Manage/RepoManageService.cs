@@ -50,7 +50,7 @@ public sealed partial class RepoManageService : IRepoManageService, IHostedServi
     {
         repoDirectory.Parent?.Create();
         var workingDir = repoDirectory.Parent?.FullName ?? RepoRoot;
-        var (_, exitCode) = await ProcessRunner.RunAsync(
+        var (_, exitCode, _) = await ProcessRunner.RunAsync(
             workingDir,
             "hg",
             ["init", repoDirectory.FullName],

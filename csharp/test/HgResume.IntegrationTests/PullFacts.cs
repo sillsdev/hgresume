@@ -208,6 +208,46 @@ public sealed class PullFacts
     }
 
     [Fact]
+    public async Task PullBundleChunk_EmptyRepoFirstSyncNoBaseHashes_NoChangeThenPushSucceeds()
+    {
+        // The live prod bug: a first sync — or a client that cleared its revisioncache — sends
+        // pullBundleChunk with NO baseHashes at all. The dispatcher used to reject the absent param with
+        // FAIL (400), which the Chorus client retries forever, and MakeBundle([]) emitted an invalid hg
+        // command. The pull must now settle on NOCHANGE against the empty repo (so the client proceeds to
+        // push) without looping, and the subsequent push must apply cleanly — the whole first sync.
+        _fx.SeedRepo("empty-hg-repo.zip");
+        string tx = nameof(PullBundleChunk_EmptyRepoFirstSyncNoBaseHashes_NoChangeThenPushSucceeds);
+        Api.FinishPullBundle(tx);
+        Api.FinishPushBundle(tx);
+
+        // Guard the no-baseHashes pull with a timeout so a regression surfaces as a fast failure rather
+        // than hanging on the loop.
+        var call = Task.Run(() => Api.PullBundleChunk("empty-hg-repo", Array.Empty<string>(), 0, 50, tx));
+        var finished = await Task.WhenAny(call, Task.Delay(TimeSpan.FromSeconds(30)));
+        Assert.True(finished == call,
+            "pullBundleChunk with no baseHashes against an empty repo did not return within 30s — it is looping.");
+        Assert.Equal("NOCHANGE", (await call).Status);
+
+        // The client now proceeds to push its whole history into the empty repo.
+        var push = Protocol.PushEntireBundle(Api, "empty-hg-repo", tx, _fx.Fixture("sample_entire.bundle"));
+        Assert.Equal("SUCCESS", push.Status);
+    }
+
+    [Fact]
+    public void PullBundleChunk_NonEmptyRepoNoBaseHashes_ReturnsFullCloneBundle()
+    {
+        // Empty baseHashes against a NON-empty repo means "I have no common base" — the server must send
+        // a full clone (hg bundle --all), identical to passing baseHash "0". Verify the assembled bundle
+        // matches the full-repo fixture rather than FAILing or looping.
+        _fx.SeedRepo("sample-hg-repo2.zip");
+        string tx = nameof(PullBundleChunk_NonEmptyRepoNoBaseHashes_ReturnsFullCloneBundle);
+        Api.FinishPullBundle(tx);
+        var (assembled, last) = Protocol.PullEntireBundle(Api, "sample-hg-repo2", Array.Empty<string>(), tx);
+        Assert.Equal("SUCCESS", last.Status);
+        Assert.Equal(_fx.Fixture("sample_entire.bundle"), assembled);
+    }
+
+    [Fact]
     public void PullBundleChunk_LongMakeBundle_InProgressCode()
     {
         _fx.SeedRepo("sample-large-bundle-hg-repo.zip");

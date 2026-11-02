@@ -4,6 +4,13 @@ using System.Text;
 namespace HgResume.Api;
 
 /// <summary>
+/// Result of running an external command: stdout split into lines (PHP exec() style, trailing empty
+/// line removed), the process exit code, and the captured stderr (raw). Callers that previously only
+/// cared about stdout can still deconstruct the first one or two members.
+/// </summary>
+public readonly record struct ProcessResult(List<string> Lines, int ExitCode, string StdErr);
+
+/// <summary>
 /// Helpers for launching the external `hg` binary. The PHP original shelled out via exec()/`&amp;`
 /// and GNU /usr/bin/time; here we use System.Diagnostics.Process directly.
 /// </summary>
@@ -11,9 +18,10 @@ public static class ProcessRunner
 {
     /// <summary>
     /// Runs a command (mirrors PHP exec()): returns stdout split into lines with the trailing empty
-    /// line removed, plus the exit code. stderr is discarded (PHP exec captured stdout).
+    /// line removed, the exit code, and stderr. The PHP original discarded stderr and inferred failure
+    /// from empty stdout; callers now key on the exit code and can surface stderr on a real failure.
     /// </summary>
-    public static async Task<(List<string> Lines, int ExitCode)> RunAsync(string workingDir,
+    public static async Task<ProcessResult> RunAsync(string workingDir,
         string program, string[] args, CancellationToken ct = default)
     {
         var psi = new ProcessStartInfo
@@ -41,6 +49,6 @@ public static class ProcessRunner
         {
             lines.RemoveAt(lines.Count - 1);
         }
-        return (lines, proc.ExitCode);
+        return new ProcessResult(lines, proc.ExitCode, stderrTask.Result.Trim());
     }
 }
