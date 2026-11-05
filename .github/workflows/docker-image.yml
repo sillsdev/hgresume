@@ -103,6 +103,11 @@ jobs:
           HGRESUME_SKIP_BUILD: '1'
           HGRESUME_HOST_PORT: ${{ matrix.host-port }}
           TEST_FILTER: ${{ matrix.filter }}
+          # Mercurial 6.5's demandimport lazy-loads `threading`, and since CPython made LazyLoader
+          # import threading itself (later 3.12 releases on, incl. ubuntu-latest's 3.14) hg dies on startup with "partially
+          # initialized module 'threading'". Old clients in the field still run hg 6.5, so keep
+          # testing it with demandimport off; hg 7 fixed this, so the latest leg keeps it on.
+          HGDEMANDIMPORT: ${{ matrix.client == 'pinned' && 'disable' || '' }}
         run: |
           args=(test/HgResume.IntegrationTests/HgResume.IntegrationTests.csproj
             "-p:ChorusClient=${{ matrix.client }}" --logger "console;verbosity=normal")
