@@ -94,6 +94,15 @@ jobs:
         if: matrix.client == 'hg3'
         run: sudo ln -s "${{ steps.python.outputs.python-path }}" /usr/bin/python2
 
+      # The Mercurial 6.5 bundle's Linux hg is a #!/usr/bin/env python3 script with C extensions
+      # built for Python 3.8-3.13; it can't start on ubuntu-latest's Python 3.14. Old clients in the
+      # field still use it, so put a Python it supports first on PATH.
+      - name: Set up Python 3.12 for Mercurial 6.5
+        if: matrix.client == 'pinned'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
       - name: Run integration tests against the image
         working-directory: csharp
         env:
